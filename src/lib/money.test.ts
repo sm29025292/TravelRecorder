@@ -8,6 +8,7 @@ import {
   expensesAverage,
   itinerarySubtotal,
   itineraryTotal,
+  settle,
 } from './money'
 import type { Trip } from '../types'
 
@@ -79,5 +80,55 @@ describe('itinerary', () => {
       { transportCost: 0, activityCost: 1000 },
     ]
     expect(itineraryTotal(items, trip)).toBe(630)
+  })
+})
+
+describe('settle（分帳）', () => {
+  it('全體均分：A 付 1000、AB 均分 → B 付給 A 500', () => {
+    const { balances, transfers } = settle(
+      ['A', 'B'],
+      [{ payerId: 'A', amount: 1000, beneficiaryIds: [] }],
+    )
+    expect(balances.find((b) => b.id === 'A')).toMatchObject({ paid: 1000, share: 500, balance: 500 })
+    expect(balances.find((b) => b.id === 'B')).toMatchObject({ paid: 0, share: 500, balance: -500 })
+    expect(transfers).toEqual([{ from: 'B', to: 'A', amount: 500 }])
+  })
+
+  it('指定分攤對象：A 代墊 600、只算 B → B 付給 A 600', () => {
+    const { transfers } = settle(
+      ['A', 'B'],
+      [{ payerId: 'A', amount: 600, beneficiaryIds: ['B'] }],
+    )
+    expect(transfers).toEqual([{ from: 'B', to: 'A', amount: 600 }])
+  })
+
+  it('混合多筆會抵銷：淨額 A 付給 B 100', () => {
+    const { transfers } = settle(
+      ['A', 'B'],
+      [
+        { payerId: 'A', amount: 1000, beneficiaryIds: [] }, // 均分：B 欠 A 500
+        { payerId: 'B', amount: 600, beneficiaryIds: ['A'] }, // A 欠 B 600
+      ],
+    )
+    expect(transfers).toEqual([{ from: 'A', to: 'B', amount: 100 }])
+  })
+
+  it('付錢者非成員 → 該列略過（無人欠款）', () => {
+    const { balances, transfers } = settle(
+      ['A', 'B'],
+      [{ payerId: '', amount: 999, beneficiaryIds: [] }],
+    )
+    expect(transfers).toEqual([])
+    expect(balances.every((b) => b.balance === 0)).toBe(true)
+  })
+
+  it('三人均分 900：B、C 各付給 A 300', () => {
+    const { transfers } = settle(
+      ['A', 'B', 'C'],
+      [{ payerId: 'A', amount: 900, beneficiaryIds: [] }],
+    )
+    expect(transfers).toContainEqual({ from: 'B', to: 'A', amount: 300 })
+    expect(transfers).toContainEqual({ from: 'C', to: 'A', amount: 300 })
+    expect(transfers).toHaveLength(2)
   })
 })

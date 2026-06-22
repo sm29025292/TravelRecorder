@@ -1,15 +1,15 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import type { Trip, ExpenseItem } from '../../types'
+import type { Trip, ShoppingItem } from '../../types'
 import { db } from '../../db/db'
 import { newId } from '../../lib/id'
 import { TextInput, DateInput, TimeInput, NumberInput, Select, IconButton, Th, Td } from '../cells'
 import MemberSelect from '../MemberSelect'
 import ParticipantsPicker from '../ParticipantsPicker'
-import { expenseSubtotal, expensesTotal, expensesAverage, fmt } from '../../lib/money'
+import { expenseSubtotal, expensesTotal, fmt } from '../../lib/money'
 
-export default function ExpensesTab({ trip }: { trip: Trip }) {
+export default function ShoppingTab({ trip }: { trip: Trip }) {
   const items = useLiveQuery(
-    () => db.expenses.where('tripId').equals(trip.id).sortBy('sort'),
+    () => db.shopping.where('tripId').equals(trip.id).sortBy('sort'),
     [trip.id],
   )
   const members = useLiveQuery(
@@ -21,7 +21,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
   async function addRow() {
     const list = items ?? []
     const sort = (list.length ? list[list.length - 1].sort : 0) + 1
-    const row: ExpenseItem = {
+    const row: ShoppingItem = {
       id: newId(),
       tripId: trip.id,
       date: '',
@@ -30,28 +30,27 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
       currency: trip.currencyCode,
       amount: 0,
       fee: 0,
-      paid: false,
-      paidBy: '',
       payerId: '',
       participantIds: [],
-      paymentStatus: '',
       notes: '',
       sort,
     }
-    await db.expenses.add(row)
+    await db.shopping.add(row)
   }
 
-  const update = (id: string, patch: Partial<ExpenseItem>) => db.expenses.update(id, patch)
-  const remove = (id: string) => db.expenses.delete(id)
+  const update = (id: string, patch: Partial<ShoppingItem>) => db.shopping.update(id, patch)
+  const remove = (id: string) => db.shopping.delete(id)
 
   const list = items ?? []
   const total = expensesTotal(list, trip)
-  const avg = expensesAverage(total, trip.peopleCount)
 
   return (
     <div className="space-y-3">
+      <p className="text-sm text-gray-500">
+        購物預設全體均分；若是個人購買，把「分攤」改成只有自己即可（由「付錢」的人代墊）。
+      </p>
       <div className="overflow-x-auto rounded-lg border bg-white">
-        <table className="w-full min-w-[68rem] text-sm">
+        <table className="w-full min-w-[64rem] text-sm">
           <thead className="bg-gray-50 text-left text-xs text-gray-500">
             <tr>
               <Th>日期</Th>
@@ -63,7 +62,6 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
               <Th className="text-right">小計(元)</Th>
               <Th>付錢</Th>
               <Th>分攤</Th>
-              <Th>狀態</Th>
               <Th>備註</Th>
               <Th></Th>
             </tr>
@@ -109,17 +107,6 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
                     onChange={(v) => update(it.id, { participantIds: v })}
                   />
                 </Td>
-                <Td className="w-28">
-                  <Select
-                    value={it.paymentStatus}
-                    onChange={(v) => update(it.id, { paymentStatus: v })}
-                  >
-                    <option value="">—</option>
-                    <option value="已付">已付</option>
-                    <option value="未付">未付</option>
-                    <option value="已結清">已結清</option>
-                  </Select>
-                </Td>
                 <Td className="min-w-[8rem]">
                   <TextInput value={it.notes} onChange={(v) => update(it.id, { notes: v })} />
                 </Td>
@@ -132,8 +119,8 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
             ))}
             {list.length === 0 && (
               <tr>
-                <td colSpan={12} className="p-6 text-center text-gray-400">
-                  尚無花費，點下方「新增一列」。
+                <td colSpan={11} className="p-6 text-center text-gray-400">
+                  尚無購物紀錄，點下方「新增一列」。
                 </td>
               </tr>
             )}
@@ -148,13 +135,8 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
         >
           + 新增一列
         </button>
-        <div className="ml-auto flex gap-6 text-sm">
-          <span>
-            總計：<b className="tabular-nums">{fmt(total)}</b> 元
-          </span>
-          <span>
-            平均（{trip.peopleCount || 0} 人）：<b className="tabular-nums">{fmt(avg)}</b> 元
-          </span>
+        <div className="ml-auto text-sm">
+          購物總計：<b className="tabular-nums">{fmt(total)}</b> 元
         </div>
       </div>
     </div>

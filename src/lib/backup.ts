@@ -1,32 +1,49 @@
 import { db } from '../db/db'
-import type { Trip, Attraction, ExpenseItem, ItineraryItem } from '../types'
+import type {
+  Trip,
+  Attraction,
+  ExpenseItem,
+  ItineraryItem,
+  Member,
+  ShoppingItem,
+  PackingItem,
+} from '../types'
 
 export interface BackupData {
   app: 'travel-recorder'
-  version: 1
+  version: number
   exportedAt: string
   trips: Trip[]
   attractions: Attraction[]
   expenses: ExpenseItem[]
   itinerary: ItineraryItem[]
+  members?: Member[]
+  shopping?: ShoppingItem[]
+  packing?: PackingItem[]
 }
 
-/** 匯出所有資料（旅程＋景點＋花費＋行程）。 */
+/** 匯出所有資料（旅程＋景點＋花費＋行程＋人員＋購物＋行李）。 */
 export async function exportAll(): Promise<BackupData> {
-  const [trips, attractions, expenses, itinerary] = await Promise.all([
+  const [trips, attractions, expenses, itinerary, members, shopping, packing] = await Promise.all([
     db.trips.toArray(),
     db.attractions.toArray(),
     db.expenses.toArray(),
     db.itinerary.toArray(),
+    db.members.toArray(),
+    db.shopping.toArray(),
+    db.packing.toArray(),
   ])
   return {
     app: 'travel-recorder',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     trips,
     attractions,
     expenses,
     itinerary,
+    members,
+    shopping,
+    packing,
   }
 }
 
@@ -52,20 +69,30 @@ export async function importAll(data: BackupData, mode: 'replace' | 'merge' = 'r
   if (!data || data.app !== 'travel-recorder') {
     throw new Error('檔案格式不符，請選擇 TravelRecorder 匯出的備份檔。')
   }
-  await db.transaction('rw', db.trips, db.attractions, db.expenses, db.itinerary, async () => {
-    if (mode === 'replace') {
+  await db.transaction(
+    'rw',
+    [db.trips, db.attractions, db.expenses, db.itinerary, db.members, db.shopping, db.packing],
+    async () => {
+      if (mode === 'replace') {
+        await Promise.all([
+          db.trips.clear(),
+          db.attractions.clear(),
+          db.expenses.clear(),
+          db.itinerary.clear(),
+          db.members.clear(),
+          db.shopping.clear(),
+          db.packing.clear(),
+        ])
+      }
       await Promise.all([
-        db.trips.clear(),
-        db.attractions.clear(),
-        db.expenses.clear(),
-        db.itinerary.clear(),
+        db.trips.bulkPut(data.trips ?? []),
+        db.attractions.bulkPut(data.attractions ?? []),
+        db.expenses.bulkPut(data.expenses ?? []),
+        db.itinerary.bulkPut(data.itinerary ?? []),
+        db.members.bulkPut(data.members ?? []),
+        db.shopping.bulkPut(data.shopping ?? []),
+        db.packing.bulkPut(data.packing ?? []),
       ])
-    }
-    await Promise.all([
-      db.trips.bulkPut(data.trips ?? []),
-      db.attractions.bulkPut(data.attractions ?? []),
-      db.expenses.bulkPut(data.expenses ?? []),
-      db.itinerary.bulkPut(data.itinerary ?? []),
-    ])
-  })
+    },
+  )
 }

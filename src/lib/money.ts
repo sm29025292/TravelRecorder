@@ -65,3 +65,81 @@ export function fmt(value: number): string {
     maximumFractionDigits: 2,
   })
 }
+
+// ── 分帳 settlement ───────────────────────────────────────────────
+
+export interface SettleEntry {
+  payerId: string // 付錢的成員
+  amount: number // 金額（台幣）
+  beneficiaryIds: string[] // 分攤成員；空陣列 = 全體均分
+}
+
+export interface MemberBalance {
+  id: string
+  paid: number // 已付
+  share: number // 應分攤
+  balance: number // 結餘 = paid - share（>0 應收回、<0 應支付）
+}
+
+export interface Transfer {
+  from: string // 應支付的人
+  to: string // 應收款的人
+  amount: number
+}
+
+/**
+ * 計算分帳：每位成員的已付/應分攤/結餘，並用貪婪法產生最少筆數的結算轉帳。
+ * - `beneficiaryIds` 空、或過濾後為空 → 全體均分。
+ * - `payerId` 非現有成員的 entry 直接略過（未設付錢者的列不納入結算）。
+ */
+export function settle(
+  memberIds: string[],
+  entries: SettleEntry[],
+): { balances: MemberBalance[]; transfers: Transfer[] } {
+  const valid = new Set(memberIds)
+  const paid = new Map<string, number>(memberIds.map((id) => [id, 0]))
+  const share = new Map<string, number>(memberIds.map((id) => [id, 0]))
+
+  for (const e of entries) {
+    if (!valid.has(e.payerId)) continue
+    const filtered = e.beneficiaryIds.filter((b) => valid.has(b))
+    const bens = filtered.length ? filtered : memberIds
+    if (bens.length === 0) continue
+    paid.set(e.payerId, (paid.get(e.payerId) ?? 0) + e.amount)
+    const per = e.amount / bens.length
+    for (const b of bens) share.set(b, (share.get(b) ?? 0) + per)
+  }
+
+  const balances: MemberBalance[] = memberIds.map((id) => ({
+    id,
+    paid: round(paid.get(id) ?? 0),
+    share: round(share.get(id) ?? 0),
+    balance: round((paid.get(id) ?? 0) - (share.get(id) ?? 0)),
+  }))
+
+  // 貪婪結算：最大債權人 ↔ 最大債務人
+  const creditors = balances
+    .filter((b) => b.balance > 0)
+    .map((b) => ({ id: b.id, amt: b.balance }))
+    .sort((a, b) => b.amt - a.amt)
+  const debtors = balances
+    .filter((b) => b.balance < 0)
+    .map((b) => ({ id: b.id, amt: -b.balance }))
+    .sort((a, b) => b.amt - a.amt)
+
+  const transfers: Transfer[] = []
+  let ci = 0
+  let di = 0
+  while (ci < creditors.length && di < debtors.length) {
+    const c = creditors[ci]
+    const d = debtors[di]
+    const amt = round(Math.min(c.amt, d.amt))
+    if (amt > 0) transfers.push({ from: d.id, to: c.id, amount: amt })
+    c.amt = round(c.amt - amt)
+    d.amt = round(d.amt - amt)
+    if (c.amt <= 0.005) ci++
+    if (d.amt <= 0.005) di++
+  }
+
+  return { balances, transfers }
+}

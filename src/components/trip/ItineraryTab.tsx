@@ -4,6 +4,8 @@ import { db } from '../../db/db'
 import { newId } from '../../lib/id'
 import { TextInput, DateInput, TimeInput, NumberInput, IconButton, Th, Td } from '../cells'
 import AttractionPicker from '../AttractionPicker'
+import MemberSelect from '../MemberSelect'
+import ParticipantsPicker from '../ParticipantsPicker'
 import { itinerarySubtotal, itineraryTotal, fmt } from '../../lib/money'
 
 export default function ItineraryTab({ trip }: { trip: Trip }) {
@@ -12,6 +14,11 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
     [trip.id],
   )
   const attractions = useLiveQuery(() => db.attractions.toArray(), [], [])
+  const members = useLiveQuery(
+    () => db.members.where('tripId').equals(trip.id).sortBy('sort'),
+    [trip.id],
+    [],
+  )
 
   async function addRow() {
     const list = items ?? []
@@ -27,6 +34,8 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
       transportCost: 0,
       activityCost: 0,
       paidBy: '',
+      payerId: '',
+      participantIds: [],
       notes: '',
       link: '',
       sort,
@@ -44,7 +53,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto rounded-lg border bg-white">
-        <table className="w-full min-w-[70rem] text-sm">
+        <table className="w-full min-w-[78rem] text-sm">
           <thead className="bg-gray-50 text-left text-xs text-gray-500">
             <tr>
               <Th>日期</Th>
@@ -56,6 +65,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
               <Th className="text-right">花費({cur})</Th>
               <Th className="text-right">小計(元)</Th>
               <Th>付錢</Th>
+              <Th>分攤</Th>
               <Th>備註</Th>
               <Th>連結</Th>
               <Th></Th>
@@ -99,7 +109,18 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
                   {fmt(itinerarySubtotal(it, trip))}
                 </Td>
                 <Td className="w-24">
-                  <TextInput value={it.paidBy} onChange={(v) => update(it.id, { paidBy: v })} />
+                  <MemberSelect
+                    members={members ?? []}
+                    value={it.payerId ?? ''}
+                    onChange={(v) => update(it.id, { payerId: v })}
+                  />
+                </Td>
+                <Td className="w-28">
+                  <ParticipantsPicker
+                    members={members ?? []}
+                    value={it.participantIds ?? []}
+                    onChange={(v) => update(it.id, { participantIds: v })}
+                  />
                 </Td>
                 <Td className="min-w-[8rem]">
                   <TextInput value={it.notes} onChange={(v) => update(it.id, { notes: v })} />
@@ -120,7 +141,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
             ))}
             {list.length === 0 && (
               <tr>
-                <td colSpan={12} className="p-6 text-center text-gray-400">
+                <td colSpan={13} className="p-6 text-center text-gray-400">
                   尚無行程，點下方「新增一列」。先到「景點庫」加景點，這裡的「景點」欄就能下拉選取。
                 </td>
               </tr>

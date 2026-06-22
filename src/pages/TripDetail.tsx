@@ -5,13 +5,19 @@ import { db } from '../db/db'
 import OverviewTab from '../components/trip/OverviewTab'
 import ExpensesTab from '../components/trip/ExpensesTab'
 import ItineraryTab from '../components/trip/ItineraryTab'
+import ShoppingTab from '../components/trip/ShoppingTab'
+import SettlementTab from '../components/trip/SettlementTab'
+import PackingTab from '../components/trip/PackingTab'
 
-type Tab = 'overview' | 'expenses' | 'itinerary'
+type Tab = 'overview' | 'expenses' | 'itinerary' | 'shopping' | 'settlement' | 'packing'
 
 const TABS: Array<[Tab, string]> = [
   ['overview', '總覽'],
   ['expenses', '花費'],
   ['itinerary', '行程'],
+  ['shopping', '購物'],
+  ['settlement', '分帳'],
+  ['packing', '行李'],
 ]
 
 export default function TripDetail() {
@@ -39,7 +45,7 @@ export default function TripDetail() {
         <h1 className="mt-1 text-xl font-bold">{trip.name || '(未命名旅程)'}</h1>
       </div>
 
-      <div className="mb-4 flex gap-1 border-b">
+      <div className="mb-4 flex flex-wrap gap-1 border-b">
         {TABS.map(([k, label]) => (
           <button
             key={k}
@@ -58,6 +64,9 @@ export default function TripDetail() {
       {tab === 'overview' && <OverviewTab trip={trip} />}
       {tab === 'expenses' && <ExpensesTab trip={trip} />}
       {tab === 'itinerary' && <ItineraryTab trip={trip} />}
+      {tab === 'shopping' && <ShoppingTab trip={trip} />}
+      {tab === 'settlement' && <SettlementTab trip={trip} />}
+      {tab === 'packing' && <PackingTab trip={trip} />}
     </div>
   )
 }

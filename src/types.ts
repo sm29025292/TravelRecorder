@@ -39,7 +39,9 @@ export interface ExpenseItem {
   amount: number // 以 currency 計的金額
   fee: number // 手續費（台幣）
   paid: boolean
-  paidBy: string // 付錢的人
+  paidBy: string // 付錢的人（v1 自由文字，保留相容）
+  payerId?: ID // 付錢的成員（分帳用）
+  participantIds?: ID[] // 分攤成員；空/未設 = 全體均分
   paymentStatus: string // 付錢狀態備註
   notes: string
   sort: number
@@ -56,8 +58,48 @@ export interface ItineraryItem {
   hours: number // 時間(HR)
   transportCost: number // 交通花費（旅程外幣）
   activityCost: number // 行程花費（旅程外幣）
-  paidBy: string
+  paidBy: string // v1 自由文字，保留相容
+  payerId?: ID // 付錢的成員（分帳用）
+  participantIds?: ID[] // 分攤成員；空/未設 = 全體均分
   notes: string
   link: string // 備註(交通) 連結
+  sort: number
+}
+
+/** 同行者（per trip），用於分帳。 */
+export interface Member {
+  id: ID
+  tripId: ID
+  name: string
+  passportName: string
+  passportNumber: string
+  birthday: string
+  sort: number
+}
+
+/** 購物記帳（per trip）。 */
+export interface ShoppingItem {
+  id: ID
+  tripId: ID
+  date: string
+  time: string
+  item: string
+  currency: string // 該列幣別代碼；'TWD' 表示台幣
+  amount: number
+  fee: number
+  payerId?: ID // 付錢的成員
+  participantIds?: ID[] // 分攤成員；空/未設 = 全體均分
+  notes: string
+  sort: number
+}
+
+/** 行李 / 備註清單項目（per trip，可勾選）。 */
+export interface PackingItem {
+  id: ID
+  tripId: ID
+  item: string
+  quantity: number // 份量(人)
+  notes: string
+  checked: boolean
   sort: number
 }

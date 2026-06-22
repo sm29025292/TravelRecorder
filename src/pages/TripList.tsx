@@ -28,12 +28,19 @@ export default function TripList() {
   }
 
   async function removeTrip(id: string, name: string) {
-    if (!confirm(`確定刪除旅程「${name || '未命名'}」？相關花費與行程也會一併刪除。`)) return
-    await db.transaction('rw', db.trips, db.expenses, db.itinerary, async () => {
-      await db.expenses.where('tripId').equals(id).delete()
-      await db.itinerary.where('tripId').equals(id).delete()
-      await db.trips.delete(id)
-    })
+    if (!confirm(`確定刪除旅程「${name || '未命名'}」？相關花費、行程、購物、人員、行李也會一併刪除。`)) return
+    await db.transaction(
+      'rw',
+      [db.trips, db.expenses, db.itinerary, db.members, db.shopping, db.packing],
+      async () => {
+        await db.expenses.where('tripId').equals(id).delete()
+        await db.itinerary.where('tripId').equals(id).delete()
+        await db.members.where('tripId').equals(id).delete()
+        await db.shopping.where('tripId').equals(id).delete()
+        await db.packing.where('tripId').equals(id).delete()
+        await db.trips.delete(id)
+      },
+    )
   }
 
   return (
