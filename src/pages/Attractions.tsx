@@ -1,14 +1,27 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { newId } from '../lib/id'
 import type { Attraction } from '../types'
 import { TextInput, NumberInput, IconButton, Th, Td } from '../components/cells'
 import { groupByCountry } from '../lib/group'
+import { importAttractionsFromCSV } from '../lib/importAttractions'
 
 export default function Attractions() {
   const attractions = useLiveQuery(() => db.attractions.toArray(), [], [])
   const [newCountry, setNewCountry] = useState('')
+  const [msg, setMsg] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleCSV(file: File) {
+    try {
+      const { added, duplicates, skipped } = await importAttractionsFromCSV(await file.text())
+      setMsg(`匯入完成：新增 ${added} 筆，略過 ${duplicates + skipped} 筆（重複或非景點）`)
+      setTimeout(() => setMsg(''), 6000)
+    } catch (e) {
+      setMsg('匯入失敗：' + (e as Error).message)
+    }
+  }
 
   async function addRow() {
     const a: Attraction = {
@@ -46,6 +59,23 @@ export default function Attractions() {
             />
           </label>
           <button
+            onClick={() => fileRef.current?.click()}
+            className="rounded border px-3 py-2 text-sm hover:bg-gray-50"
+          >
+            匯入 CSV
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) handleCSV(f)
+              e.target.value = ''
+            }}
+          />
+          <button
             onClick={addRow}
             className="rounded bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700"
           >
@@ -53,6 +83,10 @@ export default function Attractions() {
           </button>
         </div>
       </div>
+
+      {msg && (
+        <p className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">{msg}</p>
+      )}
 
       {groups.length === 0 && (
         <p className="rounded border border-dashed p-8 text-center text-gray-500">
