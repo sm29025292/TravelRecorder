@@ -35,7 +35,7 @@ export async function exportAll(): Promise<BackupData> {
   ])
   return {
     app: 'travel-recorder',
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     trips,
     attractions,
@@ -69,6 +69,10 @@ export async function importAll(data: BackupData, mode: 'replace' | 'merge' = 'r
   if (!data || data.app !== 'travel-recorder') {
     throw new Error('檔案格式不符，請選擇 TravelRecorder 匯出的備份檔。')
   }
+  // 舊版（v2 以前）景點沒有 region：沿用 DB 遷移邏輯，把舊 country（其實是大地區）搬到 region。
+  const attractions = (data.attractions ?? []).map((a) =>
+    a.region === undefined ? { ...a, region: a.country ?? '', country: '' } : a,
+  )
   await db.transaction(
     'rw',
     [db.trips, db.attractions, db.expenses, db.itinerary, db.members, db.shopping, db.packing],
@@ -86,7 +90,7 @@ export async function importAll(data: BackupData, mode: 'replace' | 'merge' = 'r
       }
       await Promise.all([
         db.trips.bulkPut(data.trips ?? []),
-        db.attractions.bulkPut(data.attractions ?? []),
+        db.attractions.bulkPut(attractions),
         db.expenses.bulkPut(data.expenses ?? []),
         db.itinerary.bulkPut(data.itinerary ?? []),
         db.members.bulkPut(data.members ?? []),

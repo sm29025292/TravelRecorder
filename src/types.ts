@@ -17,12 +17,13 @@ export interface Trip {
   updatedAt: number
 }
 
-/** 景點：全域可重複使用的參考資料，取代「景點」分頁，依 country 分組。 */
+/** 景點：全域可重複使用的參考資料，取代「景點」分頁，依「國家＋大地區」分組。 */
 export interface Attraction {
   id: ID
-  country: string // 分組鍵，例：大阪 / 英國倫敦
+  country: string // 國家，例：日本（分組鍵之一）
+  region: string // 大地區，例：大阪（分組鍵之一）
   name: string // 景點名稱
-  address: string
+  address: string // 詳細地址，例：日本橋
   url: string
   notes: string
   priority: number // 1-3，0 表示未設定

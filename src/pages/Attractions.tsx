@@ -4,12 +4,13 @@ import { db } from '../db/db'
 import { newId } from '../lib/id'
 import type { Attraction } from '../types'
 import { TextInput, NumberInput, IconButton, Th, Td } from '../components/cells'
-import { groupByCountry } from '../lib/group'
+import { groupByLocation } from '../lib/group'
 import { importAttractionsFromCSV } from '../lib/importAttractions'
 
 export default function Attractions() {
   const attractions = useLiveQuery(() => db.attractions.toArray(), [], [])
   const [newCountry, setNewCountry] = useState('')
+  const [newRegion, setNewRegion] = useState('')
   const [msg, setMsg] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -27,6 +28,7 @@ export default function Attractions() {
     const a: Attraction = {
       id: newId(),
       country: newCountry.trim(),
+      region: newRegion.trim(),
       name: '',
       address: '',
       url: '',
@@ -39,23 +41,32 @@ export default function Attractions() {
   const update = (id: string, patch: Partial<Attraction>) => db.attractions.update(id, patch)
   const remove = (id: string) => db.attractions.delete(id)
 
-  const groups = groupByCountry(attractions ?? [])
+  const groups = groupByLocation(attractions ?? [])
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <h1 className="text-xl font-bold">景點庫</h1>
-          <p className="text-sm text-gray-500">依國家／地區分組，可重複用於各旅程行程的下拉選單。</p>
+          <p className="text-sm text-gray-500">依國家／大地區分組，可重複用於各旅程行程的下拉選單。</p>
         </div>
         <div className="ml-auto flex items-end gap-2">
           <label className="text-sm">
-            <span className="mb-1 block text-gray-600">國家／地區</span>
+            <span className="mb-1 block text-gray-600">國家</span>
             <TextInput
               value={newCountry}
-              placeholder="例：大阪"
+              placeholder="例：日本"
               onChange={setNewCountry}
-              className="w-40"
+              className="w-28"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-gray-600">大地區</span>
+            <TextInput
+              value={newRegion}
+              placeholder="例：大阪"
+              onChange={setNewRegion}
+              className="w-28"
             />
           </label>
           <button
@@ -90,29 +101,30 @@ export default function Attractions() {
 
       {groups.length === 0 && (
         <p className="rounded border border-dashed p-8 text-center text-gray-500">
-          尚無景點。在右上輸入國家／地區後按「新增景點」。
+          尚無景點。在右上輸入國家／大地區後按「新增景點」。
         </p>
       )}
 
-      {groups.map(([country, list]) => (
-        <div key={country} className="overflow-x-auto rounded-lg border bg-white">
+      {groups.map((g) => (
+        <div key={g.label} className="overflow-x-auto rounded-lg border bg-white">
           <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">
-            {country || '未分類'}（{list.length}）
+            {g.label}（{g.list.length}）
           </div>
           <table className="w-full min-w-[50rem] text-sm">
             <thead className="text-left text-xs text-gray-500">
               <tr>
                 <Th>景點</Th>
-                <Th>地址</Th>
+                <Th>詳細地址</Th>
                 <Th>網址</Th>
                 <Th>備註</Th>
                 <Th className="text-right">優先度</Th>
-                <Th>地區</Th>
+                <Th>國家</Th>
+                <Th>大地區</Th>
                 <Th></Th>
               </tr>
             </thead>
             <tbody>
-              {list.map((a) => (
+              {g.list.map((a) => (
                 <tr key={a.id} className="border-t">
                   <Td className="min-w-[8rem]">
                     <TextInput value={a.name} onChange={(v) => update(a.id, { name: v })} />
@@ -135,6 +147,12 @@ export default function Attractions() {
                   </Td>
                   <Td className="w-28">
                     <TextInput value={a.country} onChange={(v) => update(a.id, { country: v })} />
+                  </Td>
+                  <Td className="w-28">
+                    <TextInput
+                      value={a.region ?? ''}
+                      onChange={(v) => update(a.id, { region: v })}
+                    />
                   </Td>
                   <Td>
                     <IconButton title="刪除這個景點" onClick={() => remove(a.id)}>
