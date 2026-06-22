@@ -30,13 +30,29 @@ npm run preview    # 預覽 build 後的網站
 
 > PWA 圖示由 `node scripts/gen-icons.mjs` 產生（已內附，無需重跑）。
 
-## 部署（靜態網站，免費）
+## 部署到 GitHub Pages（自動、免費）
 
-`npm run build` 後，`dist/` 是純靜態檔，可直接放到任何靜態主機：
+已內附 GitHub Actions 工作流程 `.github/workflows/deploy.yml`：**每次推送到 `main` 分支**就會自動
+`npm ci` → `npm run build` → 發佈到 GitHub Pages（首次執行會自動嘗試啟用 Pages）。
 
-- **GitHub Pages**：把 `dist/` 內容發佈到 Pages 即可。專案已設定 `base: './'` 與 `HashRouter`，
-  放在子路徑或重新整理都不會 404。
-- 或丟到 Vercel / Netlify / 自己的空間，甚至本機直接用 `npm run preview` 開啟。
+一次性設定：
+
+1. 把開發分支**合併到 `main`**（工作流程設定在 `main` 觸發）。
+2. 若首次沒自動啟用，到 **Settings → Pages → Build and deployment → Source** 選「**GitHub Actions**」。
+3. 完成後網址約為 `https://<你的帳號>.github.io/<repo 名稱>/`
+   （例：`https://sm29025292.github.io/TravelRecorder/`）。
+
+專案已設定 `base: './'` 與 `HashRouter`，放在子路徑或重新整理都不會 404。
+也可改丟到 Vercel / Netlify / 自己的空間，或本機直接 `npm run preview`。
+
+## 存取控制 / 隱私
+
+- 發佈到 GitHub Pages 的網站**是公開的**（個人帳號無法做檢視權限控制，那需要 GitHub Enterprise Cloud）。
+- **但你的資料不會外洩**：本 App 沒有共用後端，資料只存在「每個人自己瀏覽器」的 IndexedDB，
+  陌生人打開公開網址只會看到一個空白 App，看不到任何人的旅程或花費。
+- 若未來真的想「只有特定人能打開 App」，最佳免費解法是改用
+  **Cloudflare Pages + Cloudflare Access**（Zero Trust 免費版可達 50 人，用 Google / Email 驗證碼登入、
+  白名單指定 email）。
 
 ## 資料與備份
 
