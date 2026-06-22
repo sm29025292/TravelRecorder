@@ -1,0 +1,71 @@
+import { db } from '../db/db'
+import type { Trip, Attraction, ExpenseItem, ItineraryItem } from '../types'
+
+export interface BackupData {
+  app: 'travel-recorder'
+  version: 1
+  exportedAt: string
+  trips: Trip[]
+  attractions: Attraction[]
+  expenses: ExpenseItem[]
+  itinerary: ItineraryItem[]
+}
+
+/** 匯出所有資料（旅程＋景點＋花費＋行程）。 */
+export async function exportAll(): Promise<BackupData> {
+  const [trips, attractions, expenses, itinerary] = await Promise.all([
+    db.trips.toArray(),
+    db.attractions.toArray(),
+    db.expenses.toArray(),
+    db.itinerary.toArray(),
+  ])
+  return {
+    app: 'travel-recorder',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    trips,
+    attractions,
+    expenses,
+    itinerary,
+  }
+}
+
+/** 觸發瀏覽器下載 JSON 備份檔。 */
+export function downloadBackup(data: BackupData): void {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  const stamp = new Date().toISOString().slice(0, 10)
+  a.href = url
+  a.download = `travel-recorder-backup-${stamp}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+/** 解析備份檔文字。 */
+export function parseBackup(text: string): BackupData {
+  return JSON.parse(text) as BackupData
+}
+
+/** 匯入備份。mode='replace' 會先清空現有資料，'merge' 則覆蓋同 id 並保留其餘。 */
+export async function importAll(data: BackupData, mode: 'replace' | 'merge' = 'replace'): Promise<void> {
+  if (!data || data.app !== 'travel-recorder') {
+    throw new Error('檔案格式不符，請選擇 TravelRecorder 匯出的備份檔。')
+  }
+  await db.transaction('rw', db.trips, db.attractions, db.expenses, db.itinerary, async () => {
+    if (mode === 'replace') {
+      await Promise.all([
+        db.trips.clear(),
+        db.attractions.clear(),
+        db.expenses.clear(),
+        db.itinerary.clear(),
+      ])
+    }
+    await Promise.all([
+      db.trips.bulkPut(data.trips ?? []),
+      db.attractions.bulkPut(data.attractions ?? []),
+      db.expenses.bulkPut(data.expenses ?? []),
+      db.itinerary.bulkPut(data.itinerary ?? []),
+    ])
+  })
+}
