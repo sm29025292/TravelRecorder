@@ -77,8 +77,9 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
     }
 
     const base = currentCountry || '未分類'
-    // CSV 的「地點」對應到大地區（region）；國家（country）匯入時留空待使用者補。
-    const region = col.isFood ? `${base} 美食` : base
+    // CSV 的「地點」對應到都市（city）；國家（country）匯入時留空待使用者補。
+    // 美食表格沿用「地點 美食」作為 city，同時標記 type:'food'。
+    const city = col.isFood ? `${base} 美食` : base
 
     // 備註：合併「備註欄起、非結構欄位」的所有非空格，再加價位。
     const exclude = new Set([col.country, col.name, col.address, col.url, col.price, col.priority])
@@ -94,7 +95,7 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
 
     const priorityNum = parseInt(cell(row, col.priority), 10)
 
-    const key = `${region} ${name}`
+    const key = `${city} ${name}`
     if (seen.has(key)) {
       skipped++
       continue
@@ -103,29 +104,31 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
 
     items.push({
       country: '',
-      region,
+      city,
+      district: '',
       name,
       address: cell(row, col.address),
       url: cell(row, col.url),
       notes: noteParts.join('・'),
       priority: Number.isFinite(priorityNum) ? priorityNum : 0,
+      type: col.isFood ? 'food' : '',
     })
   }
 
   return { items, skipped }
 }
 
-/** 合併匯入：以 (country, region, name) 與現有景點去重後新增。 */
+/** 合併匯入：以 (country, city, name) 與現有景點去重後新增。 */
 export async function mergeAttractions(
   items: NewAttraction[],
 ): Promise<{ added: number; duplicates: number }> {
   const { db } = await import('../db/db')
   const existing = await db.attractions.toArray()
-  const have = new Set(existing.map((a) => `${a.country} ${a.region} ${a.name}`))
+  const have = new Set(existing.map((a) => `${a.country} ${a.city} ${a.name}`))
   const toAdd: Attraction[] = []
   let duplicates = 0
   for (const it of items) {
-    const key = `${it.country} ${it.region} ${it.name}`
+    const key = `${it.country} ${it.city} ${it.name}`
     if (have.has(key)) {
       duplicates++
       continue

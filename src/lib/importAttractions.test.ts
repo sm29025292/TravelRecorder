@@ -24,21 +24,22 @@ describe('rowsToAttractions', () => {
     expect(skipped).toBe(3)
   })
 
-  it('地點向下填滿（落在大地區 region）', () => {
-    expect(items[1]).toMatchObject({ country: '', region: '大阪', name: '通天閣', priority: 1 })
+  it('地點向下填滿（落在都市 city）', () => {
+    expect(items[1]).toMatchObject({ country: '', city: '大阪', name: '通天閣', priority: 1 })
   })
 
   it('備註可取自非標準欄位', () => {
-    expect(items[2]).toMatchObject({ region: '京都車站', name: '京都車站', notes: '拉麵小路' })
+    expect(items[2]).toMatchObject({ city: '京都車站', name: '京都車站', notes: '拉麵小路' })
   })
 
-  it('餐館自成美食分組、價位（含逗號）併入備註', () => {
+  it('餐館自成美食分組、價位（含逗號）併入備註、type 標記 food', () => {
     expect(items[3]).toMatchObject({
       country: '',
-      region: '大阪心齋橋 美食',
+      city: '大阪心齋橋 美食',
       name: '四天王',
       address: '大阪府道頓堀',
       notes: '24小時・價位：700,920',
+      type: 'food',
     })
   })
 
