@@ -35,7 +35,7 @@ export async function exportAll(): Promise<BackupData> {
   ])
   return {
     app: 'travel-recorder',
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     trips,
     attractions,
@@ -69,10 +69,24 @@ export async function importAll(data: BackupData, mode: 'replace' | 'merge' = 'r
   if (!data || data.app !== 'travel-recorder') {
     throw new Error('檔案格式不符，請選擇 TravelRecorder 匯出的備份檔。')
   }
-  // 舊版（v2 以前）景點沒有 region：沿用 DB 遷移邏輯，把舊 country（其實是大地區）搬到 region。
-  const attractions = (data.attractions ?? []).map((a) =>
-    a.region === undefined ? { ...a, region: a.country ?? '', country: '' } : a,
-  )
+  // 正規化舊版景點欄位，對應 DB v4 遷移邏輯：
+  //   v2-：沒有 region，舊 country 其實是大地區 → city；country 清空。
+  //   v3 ：有 region，無 city → region 改為 city。
+  //   v4+：已有 city，補齊 district / type 預設值。
+  const attractions = (data.attractions ?? []).map((raw: unknown) => {
+    const a = raw as Record<string, unknown>
+    if (a.city !== undefined) {
+      // v4+
+      return { district: '', type: '', ...a }
+    }
+    if (a.region !== undefined) {
+      // v3
+      const { region, ...rest } = a
+      return { ...rest, city: region ?? '', district: '', type: '' }
+    }
+    // v2-
+    return { ...a, city: a.country ?? '', country: '', district: '', type: '' }
+  }) as Attraction[]
   await db.transaction(
     'rw',
     [db.trips, db.attractions, db.expenses, db.itinerary, db.members, db.shopping, db.packing],

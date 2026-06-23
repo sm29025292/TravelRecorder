@@ -17,16 +17,18 @@ export interface Trip {
   updatedAt: number
 }
 
-/** 景點：全域可重複使用的參考資料，取代「景點」分頁，依「國家＋大地區」分組。 */
+/** 景點：全域可重複使用的參考資料，取代「景點」分頁，依地理三層階層分組。 */
 export interface Attraction {
   id: ID
-  country: string // 國家，例：日本（分組鍵之一）
-  region: string // 大地區，例：大阪（分組鍵之一）
+  country: string // 國家，例：日本（分組鍵）
+  city: string // 都市，例：大阪（分組鍵，原 region）
+  district: string // 區域，例：心齋橋（分組鍵）
   name: string // 景點名稱
   address: string // 詳細地址，例：日本橋
   url: string
   notes: string
   priority: number // 1-3，0 表示未設定
+  type: 'attraction' | 'food' | '' // 類型：景點 / 美食 / 未設
 }
 
 /** 花費（機票 / 飯店 / 保險等大項）。 */

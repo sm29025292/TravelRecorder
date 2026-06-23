@@ -54,10 +54,39 @@ export class TravelDB extends Dexie {
           .table('attractions')
           .toCollection()
           .modify((a: Attraction) => {
-            if (a.region === undefined) {
-              a.region = a.country ?? ''
+            const rec = a as unknown as Record<string, unknown>
+            if (rec.region === undefined) {
+              rec.region = a.country ?? ''
               a.country = ''
             }
+          })
+      })
+    // v4：景點地點升級為三層（國家／都市／區域），新增類型欄（景點／美食）。
+    // region → city（都市）；新增 district（區域）與 type（類型）欄位。
+    this.version(4)
+      .stores({
+        trips: 'id, updatedAt, name',
+        attractions: 'id, country, city, name',
+        expenses: 'id, tripId, sort',
+        itinerary: 'id, tripId, sort',
+        members: 'id, tripId, sort',
+        shopping: 'id, tripId, sort',
+        packing: 'id, tripId, sort',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('attractions')
+          .toCollection()
+          .modify((a: Attraction) => {
+            const rec = a as unknown as Record<string, unknown>
+            if ('region' in rec) {
+              rec.city = rec.region ?? ''
+              delete rec.region
+            } else if (rec.city === undefined) {
+              rec.city = ''
+            }
+            if (rec.district === undefined) rec.district = ''
+            if (rec.type === undefined) rec.type = ''
           })
       })
   }
