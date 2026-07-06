@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useNavigate } from 'react-router-dom'
 import { db } from '../db/db'
 import { newId } from '../lib/id'
-import type { Attraction } from '../types'
+import type { Attraction, ItineraryItem, Trip } from '../types'
 import { TextInput, IconButton, Th, Td, Select } from '../components/cells'
 import {
   buildLocationTree,
@@ -14,6 +15,7 @@ import {
 } from '../lib/group'
 import { importAttractionsFromCSV } from '../lib/importAttractions'
 import { applyMerge, findDuplicateGroups } from '../lib/dedupeAttractions'
+import { findOrphanItinerary } from '../lib/orphanItinerary'
 
 const inputCls =
   'rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
@@ -101,6 +103,8 @@ function allIdsUnderCity(cn: CityNode): string[] {
 
 export default function Attractions() {
   const attractions = useLiveQuery(() => db.attractions.toArray(), [], [])
+  const trips = useLiveQuery(() => db.trips.toArray(), [], [])
+  const itinerary = useLiveQuery(() => db.itinerary.toArray(), [], [])
   const [newCountry, setNewCountry] = useState('')
   const [newCity, setNewCity] = useState('')
   const [newDistrict, setNewDistrict] = useState('')
@@ -123,6 +127,9 @@ export default function Attractions() {
   const [dedupeOpen, setDedupeOpen] = useState(false)
   const [skippedGroups, setSkippedGroups] = useState<Set<string>>(new Set())
   const [survivorPick, setSurvivorPick] = useState<Record<string, string>>({})
+
+  // 孤兒參照健檢面板
+  const [healthOpen, setHealthOpen] = useState(false)
 
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -435,6 +442,13 @@ export default function Attractions() {
             整理重複
           </button>
           <button
+            onClick={() => setHealthOpen(true)}
+            className="rounded border px-3 py-2 text-sm hover:bg-gray-50"
+            title="掃描行程中指向已不存在景點的孤兒列，可清除參照或前往該旅程處理"
+          >
+            健檢
+          </button>
+          <button
             onClick={addRow}
             className="rounded bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700"
           >
@@ -653,6 +667,17 @@ export default function Attractions() {
           survivorPick={survivorPick}
           setSurvivorPick={setSurvivorPick}
           onClose={() => setDedupeOpen(false)}
+          setMsg={setMsg}
+        />
+      )}
+
+      {/* 孤兒參照健檢 modal */}
+      {healthOpen && (
+        <HealthPanel
+          itinerary={itinerary ?? []}
+          attractions={allAttractions}
+          trips={trips ?? []}
+          onClose={() => setHealthOpen(false)}
           setMsg={setMsg}
         />
       )}
@@ -921,6 +946,146 @@ function DedupePanel({
                     >
                       合併
                     </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function HealthPanel({
+  itinerary,
+  attractions,
+  trips,
+  onClose,
+  setMsg,
+}: {
+  itinerary: ItineraryItem[]
+  attractions: Attraction[]
+  trips: Trip[]
+  onClose: () => void
+  setMsg: (s: string) => void
+}) {
+  const navigate = useNavigate()
+  const orphans = useMemo(
+    () => findOrphanItinerary(itinerary, attractions),
+    [itinerary, attractions],
+  )
+  const tripById = useMemo(() => {
+    const m = new Map<string, Trip>()
+    for (const t of trips) m.set(t.id, t)
+    return m
+  }, [trips])
+
+  // 依 tripId 分組（保留輸入順序）
+  const grouped = useMemo(() => {
+    const m = new Map<string, ItineraryItem[]>()
+    for (const r of orphans) {
+      const list = m.get(r.tripId)
+      if (list) list.push(r)
+      else m.set(r.tripId, [r])
+    }
+    return [...m.entries()]
+  }, [orphans])
+
+  async function clearRef(row: ItineraryItem) {
+    const ok = window.confirm('清除此列的景點參照？該行程列會回到「未指定景點」。')
+    if (!ok) return
+    try {
+      await db.itinerary.update(row.id, { attractionId: '' })
+      setMsg('已清除 1 筆孤兒參照')
+      setTimeout(() => setMsg(''), 6000)
+    } catch (e) {
+      setMsg('清除失敗：' + (e as Error).message)
+    }
+  }
+
+  function goTrip(tripId: string) {
+    navigate(`/trip/${tripId}`)
+    onClose()
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-4 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold">孤兒參照健檢</h2>
+          <span className="text-xs text-gray-500">
+            掃描 attractionId 非空、卻在景點庫找不到對應景點的行程列
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-auto rounded border px-2 py-1 text-xs hover:bg-gray-50"
+          >
+            關閉
+          </button>
+        </div>
+
+        {orphans.length === 0 ? (
+          <p className="mt-4 rounded border border-dashed p-6 text-center text-sm text-gray-500">
+            無孤兒行程列，資料一致。
+          </p>
+        ) : (
+          <div className="mt-3 space-y-4">
+            {grouped.map(([tripId, rows]) => {
+              const trip = tripById.get(tripId)
+              const hasTrip = !!trip
+              return (
+                <div key={tripId || '(no-trip)'} className="rounded-lg border">
+                  <div className="flex items-center gap-2 border-b bg-gray-50 px-3 py-1.5 text-xs">
+                    <span className="font-medium text-gray-700">
+                      {hasTrip ? trip!.name || '(未命名旅程)' : '找不到旅程'}
+                    </span>
+                    <span className="text-gray-500">
+                      {hasTrip ? `共 ${rows.length} 筆` : `${tripId} · ${rows.length} 筆`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => goTrip(tripId)}
+                      disabled={!hasTrip}
+                      className="ml-auto rounded border px-2 py-0.5 text-xs enabled:hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-300"
+                      title={hasTrip ? '前往該旅程' : '旅程不存在，無法前往'}
+                    >
+                      前往旅程 ↗
+                    </button>
+                  </div>
+                  <div className="divide-y">
+                    {rows.map((r) => (
+                      <div
+                        key={r.id}
+                        className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm"
+                      >
+                        <span className="text-gray-500">{r.date || '未排日期'}</span>
+                        {r.time && <span className="text-gray-500">{r.time}</span>}
+                        <span className="min-w-0 flex-1">
+                          {r.activity || <span className="text-gray-300">(未填活動)</span>}
+                        </span>
+                        <span
+                          className="text-xs text-gray-400"
+                          title={`原參照 attractionId：${r.attractionId}`}
+                        >
+                          #{r.attractionId.slice(0, 8)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => clearRef(r)}
+                          className="rounded border px-2 py-1 text-xs hover:bg-gray-100"
+                        >
+                          清除參照
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )
