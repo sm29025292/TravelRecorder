@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { newId } from '../lib/id'
@@ -13,6 +13,7 @@ import {
   type DistrictNode,
 } from '../lib/group'
 import { importAttractionsFromCSV } from '../lib/importAttractions'
+import { applyMerge, findDuplicateGroups } from '../lib/dedupeAttractions'
 
 const inputCls =
   'rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
@@ -48,6 +49,42 @@ function PriorityStars({ value, onChange }: { value: number; onChange: (n: numbe
   )
 }
 
+/** 「非空欄位數」計分，平手取 priority 較大者、再取原順序：作為預設保留者。 */
+function pickDefaultSurvivorId(group: Attraction[]): string {
+  const score = (a: Attraction) => {
+    let s = 0
+    if (a.country) s++
+    if (a.city) s++
+    if (a.district) s++
+    if (a.address) s++
+    if (a.url) s++
+    if (a.notes) s++
+    if (a.type) s++
+    if (a.priority > 0) s++
+    return s
+  }
+  let best = group[0]
+  let bestScore = score(best)
+  for (let i = 1; i < group.length; i++) {
+    const g = group[i]
+    const s = score(g)
+    if (s > bestScore || (s === bestScore && g.priority > best.priority)) {
+      best = g
+      bestScore = s
+    }
+  }
+  return best.id
+}
+
+/** 群組唯一 key：組內 id 排序後 join。 */
+function dedupeGroupKey(group: Attraction[]): string {
+  return group
+    .map((a) => a.id)
+    .slice()
+    .sort()
+    .join('|')
+}
+
 function allIdsUnderCountry(c: CountryNode): string[] {
   const ids: string[] = []
   for (const cn of c.cities) {
@@ -81,6 +118,11 @@ export default function Attractions() {
   const [collapsedCountries, setCollapsedCountries] = useState<Set<string>>(new Set())
   const [expandedCities, setExpandedCities] = useState<Set<string>>(new Set())
   const [editing, setEditing] = useState<EditTarget | null>(null)
+
+  // 整理重複景點面板
+  const [dedupeOpen, setDedupeOpen] = useState(false)
+  const [skippedGroups, setSkippedGroups] = useState<Set<string>>(new Set())
+  const [survivorPick, setSurvivorPick] = useState<Record<string, string>>({})
 
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -386,6 +428,13 @@ export default function Attractions() {
             }}
           />
           <button
+            onClick={() => setDedupeOpen(true)}
+            className="rounded border px-3 py-2 text-sm hover:bg-gray-50"
+            title="掃描名稱正規化後相同的景點，讓你挑一筆保留、其餘欄位擇優併入"
+          >
+            整理重複
+          </button>
+          <button
             onClick={addRow}
             className="rounded bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700"
           >
@@ -595,6 +644,19 @@ export default function Attractions() {
         )
       })}
 
+      {/* 整理重複景點 modal */}
+      {dedupeOpen && (
+        <DedupePanel
+          all={allAttractions}
+          skippedGroups={skippedGroups}
+          setSkippedGroups={setSkippedGroups}
+          survivorPick={survivorPick}
+          setSurvivorPick={setSurvivorPick}
+          onClose={() => setDedupeOpen(false)}
+          setMsg={setMsg}
+        />
+      )}
+
       {/* 節點編輯／單列搬移 modal */}
       {editing && (
         <div
@@ -705,6 +767,167 @@ export default function Attractions() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function DedupePanel({
+  all,
+  skippedGroups,
+  setSkippedGroups,
+  survivorPick,
+  setSurvivorPick,
+  onClose,
+  setMsg,
+}: {
+  all: Attraction[]
+  skippedGroups: Set<string>
+  setSkippedGroups: Dispatch<SetStateAction<Set<string>>>
+  survivorPick: Record<string, string>
+  setSurvivorPick: Dispatch<SetStateAction<Record<string, string>>>
+  onClose: () => void
+  setMsg: (s: string) => void
+}) {
+  const groups = useMemo(() => findDuplicateGroups(all), [all])
+  const visibleGroups = groups.filter((g) => !skippedGroups.has(dedupeGroupKey(g)))
+
+  async function handleMerge(group: Attraction[]) {
+    const key = dedupeGroupKey(group)
+    const survivorId = survivorPick[key] ?? pickDefaultSurvivorId(group)
+    const loserIds = group.filter((a) => a.id !== survivorId).map((a) => a.id)
+    if (loserIds.length === 0) return
+    const ok = window.confirm(
+      `合併後其他景點將被刪除，行程參照會改指向留下的景點。\n\n共合併 ${loserIds.length + 1} 筆為 1 筆。確定？`,
+    )
+    if (!ok) return
+    try {
+      await applyMerge(survivorId, loserIds)
+      setMsg(`已合併「${group[0].name}」共 ${loserIds.length + 1} 筆為 1 筆`)
+      setTimeout(() => setMsg(''), 6000)
+    } catch (e) {
+      setMsg('合併失敗：' + (e as Error).message)
+    }
+  }
+
+  function skipGroup(group: Attraction[]) {
+    setSkippedGroups((prev) => {
+      const next = new Set(prev)
+      next.add(dedupeGroupKey(group))
+      return next
+    })
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-4 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold">整理重複景點</h2>
+          <span className="text-xs text-gray-500">
+            以名稱正規化（去空白／大小寫）為 key 掃描
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-auto rounded border px-2 py-1 text-xs hover:bg-gray-50"
+          >
+            關閉
+          </button>
+        </div>
+
+        {visibleGroups.length === 0 ? (
+          <p className="mt-4 rounded border border-dashed p-6 text-center text-sm text-gray-500">
+            {groups.length === 0
+              ? '沒有重複景點。'
+              : '目前所有重複群組已略過；關閉後重開可再看到。'}
+          </p>
+        ) : (
+          <div className="mt-3 space-y-4">
+            {visibleGroups.map((group) => {
+              const key = dedupeGroupKey(group)
+              const defaultId = pickDefaultSurvivorId(group)
+              const selectedId = survivorPick[key] ?? defaultId
+              return (
+                <div key={key} className="rounded-lg border">
+                  <div className="border-b bg-gray-50 px-3 py-1.5 text-xs text-gray-600">
+                    共 {group.length} 筆・保留一筆合併其餘
+                  </div>
+                  <div className="divide-y">
+                    {group.map((a) => {
+                      const stars = '★'.repeat(Math.min(3, Math.max(0, a.priority | 0)))
+                      const loc =
+                        [a.country, a.city, a.district].filter(Boolean).join(' · ') || '（未分類）'
+                      return (
+                        <label
+                          key={a.id}
+                          className="flex cursor-pointer items-start gap-3 px-3 py-2 hover:bg-sky-50/40"
+                        >
+                          <input
+                            type="radio"
+                            name={`dedupe-${key}`}
+                            className="mt-1"
+                            checked={selectedId === a.id}
+                            onChange={() =>
+                              setSurvivorPick((prev) => ({ ...prev, [key]: a.id }))
+                            }
+                          />
+                          <div className="min-w-0 flex-1 text-sm">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-amber-500">{stars || '☆'}</span>
+                              <span className="font-medium">{a.name || '(未命名)'}</span>
+                              <span className="text-xs text-gray-500">{loc}</span>
+                              {a.type && (
+                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
+                                  {a.type === 'food' ? '美食' : '景點'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-1 grid grid-cols-1 gap-x-3 gap-y-0.5 text-xs text-gray-500 sm:grid-cols-3">
+                              <div>
+                                <span className="text-gray-400">地址：</span>
+                                {a.address || <span className="text-gray-300">—</span>}
+                              </div>
+                              <div className="truncate">
+                                <span className="text-gray-400">網址：</span>
+                                {a.url || <span className="text-gray-300">—</span>}
+                              </div>
+                              <div className="truncate">
+                                <span className="text-gray-400">備註：</span>
+                                {a.notes || <span className="text-gray-300">—</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  <div className="flex justify-end gap-2 border-t bg-gray-50 px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => skipGroup(group)}
+                      className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                    >
+                      略過
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMerge(group)}
+                      className="rounded bg-sky-600 px-3 py-1 text-sm font-medium text-white hover:bg-sky-700"
+                    >
+                      合併
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
