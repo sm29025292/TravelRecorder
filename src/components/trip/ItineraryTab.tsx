@@ -112,11 +112,23 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           <TextInput value={it.notes} onChange={(v) => update(it.id, { notes: v })} />
         </Td>
         <Td className="w-40">
-          <TextInput
-            value={it.link}
-            placeholder="https://"
-            onChange={(v) => update(it.id, { link: v })}
-          />
+          <div className="flex items-center gap-1">
+            <TextInput
+              value={it.link}
+              placeholder="https://"
+              onChange={(v) => update(it.id, { link: v })}
+            />
+            {it.link.trim() && (
+              <button
+                type="button"
+                title="開啟連結"
+                onClick={() => window.open(it.link, '_blank', 'noopener')}
+                className="shrink-0 rounded px-1.5 py-1 text-xs text-gray-500 hover:bg-sky-50 hover:text-sky-700"
+              >
+                ↗
+              </button>
+            )}
+          </div>
         </Td>
         <Td>
           <IconButton title="刪除這列" onClick={() => remove(it.id)}>

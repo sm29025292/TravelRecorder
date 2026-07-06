@@ -10,6 +10,10 @@ export interface LocationGroup {
 
 export const SEP = String.fromCharCode(0) // 組 key 分隔字元（null char），避免與內容衝突
 
+/** 組內排序：priority 降冪、平手依名稱 zh-Hant 升冪。 */
+const byPriorityThenName = (a: Attraction, b: Attraction) =>
+  b.priority - a.priority || a.name.localeCompare(b.name, 'zh-Hant')
+
 /** 依「國家＋都市＋區域」將景點分組，回傳排序後的群組（以中文排序）。 */
 export function groupByLocation(attractions: Attraction[]): LocationGroup[] {
   const map = new Map<string, Attraction[]>()
@@ -23,6 +27,7 @@ export function groupByLocation(attractions: Attraction[]): LocationGroup[] {
     .map(([key, list]) => {
       const [country, city, district] = key.split(SEP)
       const label = [country, city, district].filter(Boolean).join(' · ') || '未分類'
+      list.sort(byPriorityThenName)
       return { country, city, district, label, list }
     })
     .sort(
@@ -74,12 +79,12 @@ export function buildLocationTree(attractions: Attraction[]): CountryNode[] {
     const cities: CityNode[] = []
     let countryCount = 0
     for (const [city, districtMap] of cityMap) {
-      const direct = districtMap.get('') ?? []
+      const direct = (districtMap.get('') ?? []).slice().sort(byPriorityThenName)
       const districts: DistrictNode[] = []
       let cityCount = direct.length
       for (const [district, list] of districtMap) {
         if (district === '') continue
-        districts.push({ district, list })
+        districts.push({ district, list: list.slice().sort(byPriorityThenName) })
         cityCount += list.length
       }
       districts.sort((x, y) => sortZh(x.district, y.district))

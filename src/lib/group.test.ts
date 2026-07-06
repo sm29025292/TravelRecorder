@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildLocationTree } from './group'
+import { buildLocationTree, groupByLocation } from './group'
 import type { Attraction } from '../types'
 
 function a(over: Partial<Attraction>): Attraction {
@@ -93,5 +93,45 @@ describe('buildLocationTree', () => {
     expect(osaka.districts.map((d) => d.district)).toEqual(
       ['心齋橋', '難波'].sort((a, b) => a.localeCompare(b, 'zh-Hant')),
     )
+  })
+
+  it('組內依 priority 降冪、名稱升冪排序（DistrictNode.list 與 CityNode.direct 皆同）', () => {
+    const items = [
+      a({ id: '1', country: '日本', city: '大阪', district: '心齋橋', name: '甲', priority: 1 }),
+      a({ id: '2', country: '日本', city: '大阪', district: '心齋橋', name: '乙', priority: 3 }),
+      a({ id: '3', country: '日本', city: '大阪', district: '心齋橋', name: '丙', priority: 0 }),
+      a({ id: '4', country: '日本', city: '大阪', district: '心齋橋', name: '丁', priority: 3 }),
+      a({ id: '5', country: '日本', city: '大阪', district: '', name: 'B', priority: 2 }),
+      a({ id: '6', country: '日本', city: '大阪', district: '', name: 'A', priority: 2 }),
+      a({ id: '7', country: '日本', city: '大阪', district: '', name: 'C', priority: 3 }),
+    ]
+    const tree = buildLocationTree(items)
+    const osaka = tree[0].cities.find((c) => c.city === '大阪')!
+    // direct：C(3) → A(2) → B(2)
+    expect(osaka.direct.map((x) => x.name)).toEqual(['C', 'A', 'B'])
+    // district list：priority desc；平手依中文名（乙 < 丁 依 zh-Hant）
+    const shin = osaka.districts.find((d) => d.district === '心齋橋')!
+    const names = shin.list.map((x) => x.name)
+    // 兩個 priority 3 的 名稱升冪；然後 priority 1；最後 priority 0
+    expect(names[names.length - 1]).toBe('丙')
+    expect(names[names.length - 2]).toBe('甲')
+    expect(names.slice(0, 2).sort((a, b) => a.localeCompare(b, 'zh-Hant'))).toEqual(names.slice(0, 2))
+  })
+})
+
+describe('groupByLocation', () => {
+  it('組內依 priority 降冪、名稱升冪排序', () => {
+    const items = [
+      a({ id: '1', country: '日本', city: '大阪', district: '', name: '乙', priority: 1 }),
+      a({ id: '2', country: '日本', city: '大阪', district: '', name: '甲', priority: 3 }),
+      a({ id: '3', country: '日本', city: '大阪', district: '', name: '丙', priority: 3 }),
+      a({ id: '4', country: '日本', city: '大阪', district: '', name: '丁', priority: 0 }),
+    ]
+    const groups = groupByLocation(items)
+    expect(groups).toHaveLength(1)
+    const names = groups[0].list.map((x) => x.name)
+    // 兩個 priority 3 先出，其中 名稱升冪；接著 priority 1、priority 0
+    expect(names.slice(2)).toEqual(['乙', '丁'])
+    expect(names.slice(0, 2).sort((a, b) => a.localeCompare(b, 'zh-Hant'))).toEqual(names.slice(0, 2))
   })
 })

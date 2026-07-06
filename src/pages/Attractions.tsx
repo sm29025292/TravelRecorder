@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { newId } from '../lib/id'
 import type { Attraction } from '../types'
-import { TextInput, NumberInput, IconButton, Th, Td, Select } from '../components/cells'
+import { TextInput, IconButton, Th, Td, Select } from '../components/cells'
 import {
   buildLocationTree,
   getLocationOptions,
@@ -27,6 +27,25 @@ interface EditTarget {
   district: string
   /** 目前位置的顯示標籤（供確認訊息使用） */
   label: string
+}
+
+function PriorityStars({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const current = Math.min(3, Math.max(0, value | 0))
+  return (
+    <div className="flex items-center justify-end gap-0.5">
+      {[1, 2, 3].map((n) => (
+        <button
+          key={n}
+          type="button"
+          title={`優先度 ${n}${current === n ? '（再點清除）' : ''}`}
+          onClick={() => onChange(current === n ? 0 : n)}
+          className="rounded px-0.5 text-lg leading-none text-amber-500 hover:text-amber-600"
+        >
+          {n <= current ? '★' : '☆'}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 function allIdsUnderCountry(c: CountryNode): string[] {
@@ -56,6 +75,7 @@ export default function Attractions() {
   const [fCity, setFCity] = useState('')
   const [fDistrict, setFDistrict] = useState('')
   const [fType, setFType] = useState<'' | 'attraction' | 'food'>('')
+  const [fName, setFName] = useState('')
 
   // 樹狀摺疊狀態
   const [collapsedCountries, setCollapsedCountries] = useState<Set<string>>(new Set())
@@ -105,12 +125,17 @@ export default function Attractions() {
   const opts = getLocationOptions(allAttractions)
 
   // 篩選後建樹
+  const fNameQ = fName.trim().toLowerCase()
   const filtered = allAttractions.filter(
     (a) =>
       (!fCountry || (a.country ?? '').toLowerCase().includes(fCountry.toLowerCase())) &&
       (!fCity || (a.city ?? '').toLowerCase().includes(fCity.toLowerCase())) &&
       (!fDistrict || (a.district ?? '').toLowerCase().includes(fDistrict.toLowerCase())) &&
-      (!fType || a.type === fType),
+      (!fType || a.type === fType) &&
+      (!fNameQ ||
+        a.name.toLowerCase().includes(fNameQ) ||
+        a.address.toLowerCase().includes(fNameQ) ||
+        a.notes.toLowerCase().includes(fNameQ)),
   )
   const tree = useMemo(() => buildLocationTree(filtered), [filtered])
 
@@ -250,17 +275,32 @@ export default function Attractions() {
                   <TextInput value={a.address} onChange={(v) => update(a.id, { address: v })} />
                 </Td>
                 <Td className="min-w-[10rem]">
-                  <TextInput
-                    value={a.url}
-                    placeholder="https://"
-                    onChange={(v) => update(a.id, { url: v })}
-                  />
+                  <div className="flex items-center gap-1">
+                    <TextInput
+                      value={a.url}
+                      placeholder="https://"
+                      onChange={(v) => update(a.id, { url: v })}
+                    />
+                    {a.url.trim() && (
+                      <button
+                        type="button"
+                        title="開啟網址"
+                        onClick={() => window.open(a.url, '_blank', 'noopener')}
+                        className="shrink-0 rounded px-1.5 py-1 text-xs text-gray-500 hover:bg-sky-50 hover:text-sky-700"
+                      >
+                        ↗
+                      </button>
+                    )}
+                  </div>
                 </Td>
                 <Td className="min-w-[8rem]">
                   <TextInput value={a.notes} onChange={(v) => update(a.id, { notes: v })} />
                 </Td>
-                <Td className="w-20">
-                  <NumberInput value={a.priority} onChange={(n) => update(a.id, { priority: n })} />
+                <Td className="w-24">
+                  <PriorityStars
+                    value={a.priority}
+                    onChange={(n) => update(a.id, { priority: n })}
+                  />
                 </Td>
                 <Td className="w-24">
                   <Select
@@ -423,10 +463,25 @@ export default function Attractions() {
             <option value="food">美食</option>
           </Select>
         </div>
-        {(fCountry || fCity || fDistrict || fType) && (
+        <div className="flex flex-col gap-0.5">
+          <label className="text-xs text-gray-500">名稱</label>
+          <input
+            value={fName}
+            placeholder="搜尋名稱／地址／備註"
+            className={`${inputCls} w-44`}
+            onChange={(e) => setFName(e.target.value)}
+          />
+        </div>
+        {(fCountry || fCity || fDistrict || fType || fName) && (
           <button
             className="self-end rounded border px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
-            onClick={() => { setFCountry(''); setFCity(''); setFDistrict(''); setFType('') }}
+            onClick={() => {
+              setFCountry('')
+              setFCity('')
+              setFDistrict('')
+              setFType('')
+              setFName('')
+            }}
           >
             清除篩選
           </button>
