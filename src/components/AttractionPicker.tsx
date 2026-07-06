@@ -47,11 +47,14 @@ export default function AttractionPicker({
         <option value="">—</option>
         {groups.map((g) => (
           <optgroup key={g.label} label={g.label}>
-            {g.list.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name || '(未命名)'}
-              </option>
-            ))}
+            {g.list.map((a) => {
+              const stars = '★'.repeat(Math.min(3, Math.max(0, a.priority | 0)))
+              return (
+                <option key={a.id} value={a.id}>
+                  {(stars ? stars + ' ' : '') + (a.name || '(未命名)')}
+                </option>
+              )
+            })}
           </optgroup>
         ))}
       </Select>
