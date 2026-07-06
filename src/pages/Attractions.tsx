@@ -91,7 +91,15 @@ export default function Attractions() {
   }
 
   const update = (id: string, patch: Partial<Attraction>) => db.attractions.update(id, patch)
-  const remove = (id: string) => db.attractions.delete(id)
+  const remove = async (id: string) => {
+    const used = await db.itinerary.filter((r) => r.attractionId === id).count()
+    const ok =
+      used > 0
+        ? window.confirm(`此景點被 ${used} 筆行程使用，刪除後那些行程列將顯示空白。仍要刪除？`)
+        : window.confirm('確定刪除此景點？')
+    if (!ok) return
+    await db.attractions.delete(id)
+  }
 
   const allAttractions = attractions ?? []
   const opts = getLocationOptions(allAttractions)
