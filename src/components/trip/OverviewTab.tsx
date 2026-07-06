@@ -1,24 +1,83 @@
 import type { ReactNode } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import type { Trip } from '../../types'
 import { db } from '../../db/db'
 import { now } from '../../lib/id'
 import { TextInput, DateInput, NumberInput } from '../cells'
+import { getLocationOptions, SEP } from '../../lib/group'
+import { COUNTRY_CURRENCY, pickExchangeRate } from '../../lib/currency'
 
 export default function OverviewTab({ trip }: { trip: Trip }) {
+  const attractions = useLiveQuery(() => db.attractions.toArray(), [], [])
+  const allTrips = useLiveQuery(() => db.trips.toArray(), [], [])
+  const opts = getLocationOptions(attractions)
+
   const update = (patch: Partial<Trip>) => db.trips.update(trip.id, { ...patch, updatedAt: now() })
+
+  const country = trip.country ?? ''
+  const city = trip.city ?? ''
+
+  // 選了國家後、都市選項連動；沒選國家則列出全庫都市。
+  const cityOptions = country
+    ? (opts.citiesByCountry.get(country) ?? [])
+    : [...new Set(attractions.map((a) => a.city).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, 'zh-Hant'),
+      )
+
+  function onCountryChange(next: string) {
+    const patch: Partial<Trip> = { country: next }
+    // 換國家時清空都市（避免不合的組合），除非國家一樣則保留。
+    if (next !== country) patch.city = ''
+    const cc = COUNTRY_CURRENCY[next]
+    if (cc) {
+      patch.currencyCode = cc.code
+      patch.currencyLabel = cc.label
+      if (cc.code === 'TWD') {
+        patch.exchangeRate = 1
+      } else {
+        const rate = pickExchangeRate(allTrips, cc.code, trip.id)
+        if (rate !== undefined) patch.exchangeRate = rate
+      }
+    }
+    update(patch)
+  }
 
   return (
     <div className="max-w-2xl space-y-4 rounded-lg border bg-white p-4">
       <Field label="旅程名稱">
         <TextInput value={trip.name} onChange={(v) => update({ name: v })} />
       </Field>
-      <Field label="地點 / 地區">
-        <TextInput
-          value={trip.region}
-          placeholder="例：日本 大阪・京都"
-          onChange={(v) => update({ region: v })}
-        />
-      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="國家">
+          <TextInput
+            value={country}
+            placeholder="例：日本"
+            list="ov-countries"
+            onChange={onCountryChange}
+          />
+          <datalist id="ov-countries">
+            {opts.countries.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </Field>
+        <Field label="都市">
+          <TextInput
+            value={city}
+            placeholder="例：大阪"
+            list={`ov-cities-${country || 'all'}`}
+            onChange={(v) => update({ city: v })}
+          />
+          <datalist id={`ov-cities-${country || 'all'}`}>
+            {cityOptions.map((c) => (
+              <option key={`${country}${SEP}${c}`} value={c} />
+            ))}
+          </datalist>
+        </Field>
+      </div>
+      {trip.region && !country && (
+        <p className="-mt-2 text-xs text-gray-400">舊地區欄：{trip.region}</p>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label="出發日期">
           <DateInput value={trip.startDate} onChange={(v) => update({ startDate: v })} />
