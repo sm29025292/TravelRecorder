@@ -85,6 +85,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
                     attractions={attractions ?? []}
                     value={it.attractionId}
                     onChange={(id) => update(it.id, { attractionId: id })}
+                    defaultCountry={trip.country ?? ''}
                   />
                 </Td>
                 <Td className="min-w-[10rem]">
