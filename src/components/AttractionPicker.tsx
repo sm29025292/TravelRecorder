@@ -7,12 +7,14 @@ export default function AttractionPicker({
   attractions,
   value,
   onChange,
+  defaultCountry,
 }: {
   attractions: Attraction[]
   value: string
   onChange: (id: string) => void
+  defaultCountry?: string
 }) {
-  const [fCountry, setFCountry] = useState('')
+  const [fCountry, setFCountry] = useState(defaultCountry ?? '')
   const [fType, setFType] = useState<'' | 'attraction' | 'food'>('')
 
   const opts = getLocationOptions(attractions)
