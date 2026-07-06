@@ -86,3 +86,37 @@ describe('rowsToAttractions with 區域 column', () => {
     })
   })
 })
+
+// 表頭再多一個「國家」欄：country 從 CSV 直接落地，切換國家時 city+district 都重置。
+const csvWithCountry = [
+  '國家,地點,區域,景點,地址,網址,備註,,,優先度(1-3),',
+  '日本,京都,車站,京都塔,,,,,,1,', // 首列有國家＋地點＋區域
+  ',,,梅小路公園,,,,,,1,', // 三層全部向下填滿
+  ',,清水,清水寺,,,,,,1,', // 換區域（同國同都市）
+  ',大阪,,環球影城,,,,,,1,', // 換都市（同國），區域重置
+  '韓國,首爾,,景福宮,,,,,,1,', // 換國家，都市/區域全部重置
+  ',,,南山塔,,,,,,1,', // 向下填滿新的國家
+].join('\n')
+
+describe('rowsToAttractions with 國家 column', () => {
+  const { items } = rowsToAttractions(parseCSV(csvWithCountry))
+  const byName = Object.fromEntries(items.map((i) => [i.name, i]))
+
+  it('國家值落入 country、三層向下填滿', () => {
+    expect(byName['京都塔']).toMatchObject({ country: '日本', city: '京都', district: '車站' })
+    expect(byName['梅小路公園']).toMatchObject({
+      country: '日本',
+      city: '京都',
+      district: '車站',
+    })
+  })
+
+  it('都市切換時區域自動重置為空（同國）', () => {
+    expect(byName['環球影城']).toMatchObject({ country: '日本', city: '大阪', district: '' })
+  })
+
+  it('國家切換時 city/district 全部重置並改用新國家', () => {
+    expect(byName['景福宮']).toMatchObject({ country: '韓國', city: '首爾', district: '' })
+    expect(byName['南山塔']).toMatchObject({ country: '韓國', city: '首爾', district: '' })
+  })
+})
