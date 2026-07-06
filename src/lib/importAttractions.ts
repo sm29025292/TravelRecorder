@@ -10,6 +10,7 @@ const JUNK_COUNTRIES = new Set(['google map', 'google maps'])
 
 interface ColMap {
   country: number
+  city: number
   district: number
   name: number
   address: number
@@ -33,7 +34,8 @@ function detectHeader(row: string[]): ColMap | null {
   if (name === -1) return null
   const isFood = trim(row[name]).startsWith('餐館') || trim(row[name]).startsWith('餐廳')
   return {
-    country: find((t) => t === '地點'),
+    country: find((t) => t === '國家'),
+    city: find((t) => t === '地點'),
     district: find((t) => t === '區域'),
     name,
     address: find((t) => t === '地址'),
@@ -55,6 +57,7 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
   let skipped = 0
   let col: ColMap | null = null
   let currentCountry = ''
+  let currentCity = ''
   let currentDistrict = ''
 
   for (const row of rows) {
@@ -64,28 +67,36 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
     if (header) {
       col = header
       currentCountry = ''
+      currentCity = ''
       currentDistrict = ''
       continue
     }
     if (!col) continue
 
-    const c = cell(row, col.country)
-    if (c && c !== currentCountry) currentDistrict = ''
-    if (c) currentCountry = c
-    const d = col.district >= 0 ? cell(row, col.district) : ''
-    if (d) currentDistrict = d
+    // 由高至低層層 fill-down / reset：國家換 → 都市＋區域清空；都市換 → 區域清空。
+    const cCountry = col.country >= 0 ? cell(row, col.country) : ''
+    if (cCountry && cCountry !== currentCountry) {
+      currentCity = ''
+      currentDistrict = ''
+    }
+    if (cCountry) currentCountry = cCountry
+    const cCity = cell(row, col.city)
+    if (cCity && cCity !== currentCity) currentDistrict = ''
+    if (cCity) currentCity = cCity
+    const cDistrict = col.district >= 0 ? cell(row, col.district) : ''
+    if (cDistrict) currentDistrict = cDistrict
 
     const name = cell(row, col.name)
     if (!name) continue // 只更新地點或結構性空列
 
-    if (JUNK_NAMES.has(name.toLowerCase()) || JUNK_COUNTRIES.has(currentCountry.toLowerCase())) {
+    if (JUNK_NAMES.has(name.toLowerCase()) || JUNK_COUNTRIES.has(currentCity.toLowerCase())) {
       skipped++
       continue
     }
 
-    const base = currentCountry || '未分類'
-    // CSV 的「地點」對應到都市（city）；國家（country）匯入時留空待使用者補。
-    // 若表頭含「區域」則額外落入 district；否則沿用舊版：餐館以「地點 美食」作為 city 標記。
+    const base = currentCity || '未分類'
+    // CSV 的「地點」對應到 city；「國家」欄若存在則落入 country（否則留空）。
+    // 有「區域」欄時餐館不再加「地點 美食」後綴，僅以 type:'food' 區分。
     const hasDistrict = col.district >= 0
     const city = hasDistrict ? base : col.isFood ? `${base} 美食` : base
     const district = hasDistrict ? currentDistrict : ''
@@ -93,6 +104,7 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
     // 備註：合併「備註欄起、非結構欄位」的所有非空格，再加價位。
     const exclude = new Set([
       col.country,
+      col.city,
       col.district,
       col.name,
       col.address,
@@ -112,7 +124,7 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
 
     const priorityNum = parseInt(cell(row, col.priority), 10)
 
-    const key = `${city} ${district} ${name}`
+    const key = `${currentCountry} ${city} ${district} ${name}`
     if (seen.has(key)) {
       skipped++
       continue
@@ -120,7 +132,7 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
     seen.add(key)
 
     items.push({
-      country: '',
+      country: currentCountry,
       city,
       district,
       name,
