@@ -11,9 +11,10 @@ type TextLikeProps = {
   type?: 'text' | 'date' | 'time'
   placeholder?: string
   className?: string
+  list?: string
 }
 
-function TextLike({ value, onChange, type = 'text', placeholder, className = '' }: TextLikeProps) {
+function TextLike({ value, onChange, type = 'text', placeholder, className = '', list }: TextLikeProps) {
   const [text, setText] = useState(value)
   const [focused, setFocused] = useState(false)
   useEffect(() => {
@@ -25,6 +26,7 @@ function TextLike({ value, onChange, type = 'text', placeholder, className = '' 
       placeholder={placeholder}
       className={`${base} ${className}`}
       value={text}
+      list={list}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onChange={(e) => {

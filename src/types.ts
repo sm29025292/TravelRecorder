@@ -6,7 +6,9 @@ export type ID = string
 export interface Trip {
   id: ID
   name: string
-  region: string // 例：日本 / 東京
+  country: string // 國家（T2 起連動景點庫下拉；舊資料以 '' 容錯）
+  city: string // 都市（T2 起連動景點庫下拉；舊資料以 '' 容錯）
+  region: string // 舊自由文字欄，保留以相容舊備份／顯示參考
   startDate: string // YYYY-MM-DD
   endDate: string
   currencyCode: string // 主要外幣代碼，例 JPY

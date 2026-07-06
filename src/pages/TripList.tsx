@@ -13,6 +13,8 @@ export default function TripList() {
     const trip: Trip = {
       id: newId(),
       name: '新旅程',
+      country: '',
+      city: '',
       region: '',
       startDate: '',
       endDate: '',
@@ -78,7 +80,9 @@ export default function TripList() {
                 刪除
               </button>
             </div>
-            <p className="mt-1 text-sm text-gray-500">{t.region || '—'}</p>
+            <p className="mt-1 text-sm text-gray-500">
+              {[t.country, t.city].filter(Boolean).join(' ') || t.region || '—'}
+            </p>
             <p className="mt-1 text-sm text-gray-500">
               {t.startDate || '?'} ～ {t.endDate || '?'}
             </p>
