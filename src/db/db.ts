@@ -8,6 +8,7 @@ import type {
   ShoppingItem,
   PackingItem,
 } from '../types'
+import { shoppingToExpense } from '../lib/migrate'
 
 // 本機資料庫（IndexedDB）。資料只存在使用者的瀏覽器，用匯出/匯入做備份。
 export class TravelDB extends Dexie {
@@ -88,6 +89,44 @@ export class TravelDB extends Dexie {
             if (rec.district === undefined) rec.district = ''
             if (rec.type === undefined) rec.type = ''
           })
+      })
+    // v5：購物併入花費（T1）。stores 與 v4 相同（保留 shopping 表宣告以相容備份／凍結區程式碼）。
+    // upgrade 將 shopping 全表以 shoppingToExpense 轉入 expenses（sort 接續在既有 expenses 之後），
+    // 完成後清空 shopping。id 沿用確保重跑不會產生重複列。
+    this.version(5)
+      .stores({
+        trips: 'id, updatedAt, name',
+        attractions: 'id, country, city, name',
+        expenses: 'id, tripId, sort',
+        itinerary: 'id, tripId, sort',
+        members: 'id, tripId, sort',
+        shopping: 'id, tripId, sort',
+        packing: 'id, tripId, sort',
+      })
+      .upgrade(async (tx) => {
+        const shopping = (await tx.table('shopping').toArray()) as ShoppingItem[]
+        if (shopping.length === 0) return
+        const byTrip = new Map<string, ShoppingItem[]>()
+        for (const s of shopping) {
+          const list = byTrip.get(s.tripId) ?? []
+          list.push(s)
+          byTrip.set(s.tripId, list)
+        }
+        const converted: ExpenseItem[] = []
+        for (const [tripId, list] of byTrip) {
+          const existing = (await tx
+            .table('expenses')
+            .where('tripId')
+            .equals(tripId)
+            .toArray()) as ExpenseItem[]
+          const base = existing.reduce((m, e) => (e.sort > m ? e.sort : m), 0)
+          list.sort((a, b) => a.sort - b.sort)
+          list.forEach((s, i) => {
+            converted.push(shoppingToExpense(s, base + i + 1))
+          })
+        }
+        await tx.table('expenses').bulkPut(converted)
+        await tx.table('shopping').clear()
       })
   }
 }

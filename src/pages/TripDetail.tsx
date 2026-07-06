@@ -5,17 +5,15 @@ import { db } from '../db/db'
 import OverviewTab from '../components/trip/OverviewTab'
 import ExpensesTab from '../components/trip/ExpensesTab'
 import ItineraryTab from '../components/trip/ItineraryTab'
-import ShoppingTab from '../components/trip/ShoppingTab'
 import SettlementTab from '../components/trip/SettlementTab'
 import PackingTab from '../components/trip/PackingTab'
 
-type Tab = 'overview' | 'expenses' | 'itinerary' | 'shopping' | 'settlement' | 'packing'
+type Tab = 'overview' | 'expenses' | 'itinerary' | 'settlement' | 'packing'
 
 const TABS: Array<[Tab, string]> = [
   ['overview', '總覽'],
   ['expenses', '花費'],
   ['itinerary', '行程'],
-  ['shopping', '購物'],
   ['settlement', '分帳'],
   ['packing', '行李'],
 ]
@@ -64,7 +62,6 @@ export default function TripDetail() {
       {tab === 'overview' && <OverviewTab trip={trip} />}
       {tab === 'expenses' && <ExpensesTab trip={trip} />}
       {tab === 'itinerary' && <ItineraryTab trip={trip} />}
-      {tab === 'shopping' && <ShoppingTab trip={trip} />}
       {tab === 'settlement' && <SettlementTab trip={trip} />}
       {tab === 'packing' && <PackingTab trip={trip} />}
     </div>

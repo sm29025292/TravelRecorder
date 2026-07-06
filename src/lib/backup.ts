@@ -1,4 +1,5 @@
 import { db } from '../db/db'
+import { shoppingToExpense } from './migrate'
 import type {
   Trip,
   Attraction,
@@ -87,6 +88,32 @@ export async function importAll(data: BackupData, mode: 'replace' | 'merge' = 'r
     // v2-
     return { ...a, city: a.country ?? '', country: '', district: '', type: '' }
   }) as Attraction[]
+  // T1：舊備份的 shopping 全部轉成 expenses（id 沿用保冪等；shopping 表不再寫入）。
+  // sort 接續：per tripId 以「原 expenses 最大 sort + 1..N」補在後面。
+  const rawExpenses = data.expenses ?? []
+  const rawShopping = data.shopping ?? []
+  const convertedShopping: ExpenseItem[] = []
+  if (rawShopping.length > 0) {
+    const maxByTrip = new Map<string, number>()
+    for (const e of rawExpenses) {
+      const cur = maxByTrip.get(e.tripId) ?? 0
+      if (e.sort > cur) maxByTrip.set(e.tripId, e.sort)
+    }
+    const byTrip = new Map<string, ShoppingItem[]>()
+    for (const s of rawShopping) {
+      const list = byTrip.get(s.tripId) ?? []
+      list.push(s)
+      byTrip.set(s.tripId, list)
+    }
+    for (const [tripId, list] of byTrip) {
+      const base = maxByTrip.get(tripId) ?? 0
+      list.sort((a, b) => a.sort - b.sort)
+      list.forEach((s, i) => {
+        convertedShopping.push(shoppingToExpense(s, base + i + 1))
+      })
+    }
+  }
+  const expensesToWrite = [...rawExpenses, ...convertedShopping]
   await db.transaction(
     'rw',
     [db.trips, db.attractions, db.expenses, db.itinerary, db.members, db.shopping, db.packing],
@@ -105,10 +132,9 @@ export async function importAll(data: BackupData, mode: 'replace' | 'merge' = 'r
       await Promise.all([
         db.trips.bulkPut(data.trips ?? []),
         db.attractions.bulkPut(attractions),
-        db.expenses.bulkPut(data.expenses ?? []),
+        db.expenses.bulkPut(expensesToWrite),
         db.itinerary.bulkPut(data.itinerary ?? []),
         db.members.bulkPut(data.members ?? []),
-        db.shopping.bulkPut(data.shopping ?? []),
         db.packing.bulkPut(data.packing ?? []),
       ])
     },
