@@ -49,3 +49,40 @@ describe('rowsToAttractions', () => {
     expect(names).not.toContain('191116-191123日本關西')
   })
 })
+
+// 表頭多一個「區域」欄：地點→city、區域→district，餐館表則跳過「地點 美食」後綴。
+const csvWithDistrict = [
+  '地點,區域,景點,地址,網址,備註,,,優先度(1-3),',
+  '京都,車站,京都塔,,,,,,1,', // 有區域
+  ',,梅小路公園,,,迷宮的十字路口,,,1,', // 區域向下填滿
+  ',清水,清水寺,,,,,,1,', // 換區域
+  '大阪,,環球影城,,,,,,1,', // 換都市，區域重置為空
+  '地點,區域,餐館/小吃,地址,網址,備註,價位(円),,,', // 餐館表也支援區域
+  '大阪,心齋橋,一蘭拉麵,,,,700,,,',
+].join('\n')
+
+describe('rowsToAttractions with 區域 column', () => {
+  const { items } = rowsToAttractions(parseCSV(csvWithDistrict))
+  const byName = Object.fromEntries(items.map((i) => [i.name, i]))
+
+  it('地點 → city、區域 → district，區域可向下填滿', () => {
+    expect(byName['京都塔']).toMatchObject({ city: '京都', district: '車站' })
+    expect(byName['梅小路公園']).toMatchObject({ city: '京都', district: '車站' })
+  })
+
+  it('區域可在同一都市內覆寫', () => {
+    expect(byName['清水寺']).toMatchObject({ city: '京都', district: '清水' })
+  })
+
+  it('都市切換時區域自動重置為空', () => {
+    expect(byName['環球影城']).toMatchObject({ city: '大阪', district: '' })
+  })
+
+  it('餐館表在有區域欄時不再加「地點 美食」後綴，僅以 type:food 標記', () => {
+    expect(byName['一蘭拉麵']).toMatchObject({
+      city: '大阪',
+      district: '心齋橋',
+      type: 'food',
+    })
+  })
+})

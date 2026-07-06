@@ -10,6 +10,7 @@ const JUNK_COUNTRIES = new Set(['google map', 'google maps'])
 
 interface ColMap {
   country: number
+  district: number
   name: number
   address: number
   url: number
@@ -33,6 +34,7 @@ function detectHeader(row: string[]): ColMap | null {
   const isFood = trim(row[name]).startsWith('餐館') || trim(row[name]).startsWith('餐廳')
   return {
     country: find((t) => t === '地點'),
+    district: find((t) => t === '區域'),
     name,
     address: find((t) => t === '地址'),
     url: find((t) => t === '網址'),
@@ -53,6 +55,7 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
   let skipped = 0
   let col: ColMap | null = null
   let currentCountry = ''
+  let currentDistrict = ''
 
   for (const row of rows) {
     if (row.every((c) => trim(c) === '')) continue
@@ -61,12 +64,16 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
     if (header) {
       col = header
       currentCountry = ''
+      currentDistrict = ''
       continue
     }
     if (!col) continue
 
     const c = cell(row, col.country)
+    if (c && c !== currentCountry) currentDistrict = ''
     if (c) currentCountry = c
+    const d = col.district >= 0 ? cell(row, col.district) : ''
+    if (d) currentDistrict = d
 
     const name = cell(row, col.name)
     if (!name) continue // 只更新地點或結構性空列
@@ -78,11 +85,21 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
 
     const base = currentCountry || '未分類'
     // CSV 的「地點」對應到都市（city）；國家（country）匯入時留空待使用者補。
-    // 美食表格沿用「地點 美食」作為 city，同時標記 type:'food'。
-    const city = col.isFood ? `${base} 美食` : base
+    // 若表頭含「區域」則額外落入 district；否則沿用舊版：餐館以「地點 美食」作為 city 標記。
+    const hasDistrict = col.district >= 0
+    const city = hasDistrict ? base : col.isFood ? `${base} 美食` : base
+    const district = hasDistrict ? currentDistrict : ''
 
     // 備註：合併「備註欄起、非結構欄位」的所有非空格，再加價位。
-    const exclude = new Set([col.country, col.name, col.address, col.url, col.price, col.priority])
+    const exclude = new Set([
+      col.country,
+      col.district,
+      col.name,
+      col.address,
+      col.url,
+      col.price,
+      col.priority,
+    ])
     const noteParts: string[] = []
     const start = col.notes >= 0 ? col.notes : row.length
     for (let k = start; k < row.length; k++) {
@@ -95,7 +112,7 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
 
     const priorityNum = parseInt(cell(row, col.priority), 10)
 
-    const key = `${city} ${name}`
+    const key = `${city} ${district} ${name}`
     if (seen.has(key)) {
       skipped++
       continue
@@ -105,7 +122,7 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
     items.push({
       country: '',
       city,
-      district: '',
+      district,
       name,
       address: cell(row, col.address),
       url: cell(row, col.url),
@@ -118,17 +135,17 @@ export function rowsToAttractions(rows: string[][]): { items: NewAttraction[]; s
   return { items, skipped }
 }
 
-/** 合併匯入：以 (country, city, name) 與現有景點去重後新增。 */
+/** 合併匯入：以 (country, city, district, name) 與現有景點去重後新增。 */
 export async function mergeAttractions(
   items: NewAttraction[],
 ): Promise<{ added: number; duplicates: number }> {
   const { db } = await import('../db/db')
   const existing = await db.attractions.toArray()
-  const have = new Set(existing.map((a) => `${a.country} ${a.city} ${a.name}`))
+  const have = new Set(existing.map((a) => `${a.country} ${a.city} ${a.district} ${a.name}`))
   const toAdd: Attraction[] = []
   let duplicates = 0
   for (const it of items) {
-    const key = `${it.country} ${it.city} ${it.name}`
+    const key = `${it.country} ${it.city} ${it.district} ${it.name}`
     if (have.has(key)) {
       duplicates++
       continue
