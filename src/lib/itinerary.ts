@@ -8,7 +8,8 @@ export interface ItineraryDayGroup {
 
 /**
  * 依日期分組行程；空 date 歸「未排日期」組並置底。
- * 非空 date 以字串升冪排序（YYYY-MM-DD 字串序＝時間序），組內以 sort 升冪。
+ * 非空 date 以字串升冪排序（YYYY-MM-DD 字串序＝時間序）；
+ * 組內以 `time`（`HH:MM` 字串序）升冪，空 `time` 置底；同 `time` 或皆空以 `sort` 升冪（穩定）。
  */
 export function groupItineraryByDate(items: ItineraryItem[]): ItineraryDayGroup[] {
   const map = new Map<string, ItineraryItem[]>()
@@ -22,7 +23,19 @@ export function groupItineraryByDate(items: ItineraryItem[]): ItineraryDayGroup[
   const dated: ItineraryDayGroup[] = []
   let undated: ItineraryDayGroup | null = null
   for (const [date, list] of map) {
-    const sorted = [...list].sort((a, b) => a.sort - b.sort)
+    const sorted = [...list].sort((a, b) => {
+      const at = a.time ?? ''
+      const bt = b.time ?? ''
+      if (at && bt) {
+        const c = at.localeCompare(bt)
+        if (c !== 0) return c
+      } else if (at && !bt) {
+        return -1
+      } else if (!at && bt) {
+        return 1
+      }
+      return a.sort - b.sort
+    })
     const group = { date, items: sorted }
     if (date === '') undated = group
     else dated.push(group)
