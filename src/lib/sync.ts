@@ -11,6 +11,11 @@ const GIST_HEADERS = {
 
 type Fetch = typeof fetch
 
+// 預設 fetch 必須綁定 globalThis，避免存進 class field 或 rest arg 後
+// 呼叫時 this 變成別的物件，觸發瀏覽器
+// 「'fetch' called on an object that does not implement interface Window.」
+const defaultFetch: Fetch = (...args) => globalThis.fetch(...args)
+
 export interface CloudSnapshot {
   content: string
   updatedAt: string
@@ -41,7 +46,7 @@ export class GistBackend implements SyncBackend {
   constructor(
     private readonly token: string,
     private readonly gistId: string,
-    private readonly fetchImpl: Fetch = globalThis.fetch,
+    private readonly fetchImpl: Fetch = defaultFetch,
   ) {}
 
   async read(): Promise<CloudSnapshot | null> {
@@ -72,7 +77,7 @@ export class GistBackend implements SyncBackend {
 }
 
 /** 建立新的**私人** gist，回傳 gist id。 */
-export async function createGist(token: string, fetchImpl: Fetch = globalThis.fetch): Promise<string> {
+export async function createGist(token: string, fetchImpl: Fetch = defaultFetch): Promise<string> {
   const res = await fetchImpl(`${API_BASE}/gists`, {
     method: 'POST',
     headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
