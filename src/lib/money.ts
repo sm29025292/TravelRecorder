@@ -59,6 +59,13 @@ export function itineraryTotal(
   return round(items.reduce((sum, it) => sum + itinerarySubtotal(it, trip), 0))
 }
 
+/** 單筆行程小計（外幣）＝ 交通 + 花費，未換匯。 */
+export function itineraryForeignSubtotal(
+  item: Pick<ItineraryItem, 'transportCost' | 'activityCost'>,
+): number {
+  return round((item.transportCost || 0) + (item.activityCost || 0))
+}
+
 /** 顯示用數字格式（千分位、最多兩位小數）。 */
 export function fmt(value: number): string {
   return (Number.isFinite(value) ? value : 0).toLocaleString('zh-TW', {

@@ -6,7 +6,7 @@ import { TextInput, DateInput, TimeInput, NumberInput, IconButton, Th, Td } from
 import AttractionPicker from '../AttractionPicker'
 import MemberSelect from '../MemberSelect'
 import ParticipantsPicker from '../ParticipantsPicker'
-import { itinerarySubtotal, itineraryTotal, fmt } from '../../lib/money'
+import { itinerarySubtotal, itineraryForeignSubtotal, fmt } from '../../lib/money'
 import {
   groupItineraryByDate,
   itineraryDaySubtotal,
@@ -53,8 +53,8 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
 
   const list = items ?? []
   const cur = trip.currencyLabel || trip.currencyCode
-  const total = itineraryTotal(list, trip)
   const groups = groupItineraryByDate(list)
+  const grandSub = itineraryDaySubtotal(list, trip)
 
   function renderRow(it: ItineraryItem) {
     return (
@@ -92,7 +92,10 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           />
         </Td>
         <Td className="w-24 text-right font-medium tabular-nums">
-          {fmt(itinerarySubtotal(it, trip))}
+          <div>{fmt(itineraryForeignSubtotal(it))}</div>
+          <div className="text-xs font-normal text-gray-400">
+            {fmt(itinerarySubtotal(it, trip))}
+          </div>
         </Td>
         <Td className="w-24">
           <MemberSelect
@@ -150,7 +153,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           <Th className="text-right">時數</Th>
           <Th className="text-right">交通({cur})</Th>
           <Th className="text-right">花費({cur})</Th>
-          <Th className="text-right">小計(元)</Th>
+          <Th className="text-right">小計({cur})</Th>
           <Th>付錢</Th>
           <Th>分攤</Th>
           <Th>備註</Th>
@@ -222,8 +225,10 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
         >
           + 新增一列
         </button>
-        <div className="ml-auto text-sm">
-          交通＋花費小計：<b className="tabular-nums">{fmt(total)}</b> 元
+        <div className="ml-auto text-sm text-gray-600">
+          總計 <b className="tabular-nums">{fmt(grandSub.hours)}</b> 小時 ·{' '}
+          {cur} <b className="tabular-nums">{fmt(grandSub.foreign)}</b> · 台幣{' '}
+          <b className="tabular-nums">{fmt(grandSub.twd)}</b>
         </div>
       </div>
     </div>

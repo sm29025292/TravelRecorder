@@ -8,6 +8,7 @@ import {
   expensesAverage,
   itinerarySubtotal,
   itineraryTotal,
+  itineraryForeignSubtotal,
   settle,
 } from './money'
 import type { Trip } from '../types'
@@ -80,6 +81,15 @@ describe('itinerary', () => {
       { transportCost: 0, activityCost: 1000 },
     ]
     expect(itineraryTotal(items, trip)).toBe(630)
+  })
+  it('行程外幣小計＝ 交通 + 花費（未換匯）', () => {
+    expect(itineraryForeignSubtotal({ transportCost: 500, activityCost: 1500 })).toBe(2000)
+  })
+  it('行程外幣小計：缺值當 0', () => {
+    expect(itineraryForeignSubtotal({ transportCost: 0, activityCost: 0 })).toBe(0)
+    expect(
+      itineraryForeignSubtotal({} as { transportCost: number; activityCost: number }),
+    ).toBe(0)
   })
 })
 
