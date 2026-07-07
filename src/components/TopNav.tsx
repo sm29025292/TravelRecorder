@@ -1,10 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useRef, useState } from 'react'
 import { exportAll, downloadBackup, parseBackup, importAll } from '../lib/backup'
+import SyncDialog from './SyncDialog'
 
 export default function TopNav() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [msg, setMsg] = useState('')
+  const [syncOpen, setSyncOpen] = useState(false)
   const { pathname } = useLocation()
 
   async function handleExport() {
@@ -61,6 +63,12 @@ export default function TopNav() {
           >
             匯入
           </button>
+          <button
+            onClick={() => setSyncOpen(true)}
+            className="rounded border px-2.5 py-1.5 text-sm hover:bg-gray-50"
+          >
+            同步
+          </button>
           <input
             ref={fileRef}
             type="file"
@@ -74,6 +82,7 @@ export default function TopNav() {
           />
         </div>
       </div>
+      {syncOpen && <SyncDialog onClose={() => setSyncOpen(false)} setMsg={flash} />}
     </header>
   )
 }
