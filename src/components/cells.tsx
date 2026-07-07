@@ -12,9 +12,20 @@ type TextLikeProps = {
   placeholder?: string
   className?: string
   list?: string
+  // commitOnBlur：輸入過程只更新內部 state，離開欄位（blur）才呼叫父層 onChange。
+  // 用於 TimeInput／DateInput：避免每擊鍵就寫入 DB → useLiveQuery 回流重排 → 輸入框失焦吃字。
+  commitOnBlur?: boolean
 }
 
-function TextLike({ value, onChange, type = 'text', placeholder, className = '', list }: TextLikeProps) {
+function TextLike({
+  value,
+  onChange,
+  type = 'text',
+  placeholder,
+  className = '',
+  list,
+  commitOnBlur = false,
+}: TextLikeProps) {
   const [text, setText] = useState(value)
   const [focused, setFocused] = useState(false)
   useEffect(() => {
@@ -28,10 +39,13 @@ function TextLike({ value, onChange, type = 'text', placeholder, className = '',
       value={text}
       list={list}
       onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      onBlur={() => {
+        setFocused(false)
+        if (commitOnBlur && text !== value) onChange(text)
+      }}
       onChange={(e) => {
         setText(e.target.value)
-        onChange(e.target.value)
+        if (!commitOnBlur) onChange(e.target.value)
       }}
     />
   )
@@ -40,11 +54,11 @@ function TextLike({ value, onChange, type = 'text', placeholder, className = '',
 export function TextInput(p: Omit<TextLikeProps, 'type'>) {
   return <TextLike {...p} type="text" />
 }
-export function DateInput(p: Omit<TextLikeProps, 'type'>) {
-  return <TextLike {...p} type="date" />
+export function DateInput(p: Omit<TextLikeProps, 'type' | 'commitOnBlur'>) {
+  return <TextLike {...p} type="date" commitOnBlur />
 }
-export function TimeInput(p: Omit<TextLikeProps, 'type'>) {
-  return <TextLike {...p} type="time" />
+export function TimeInput(p: Omit<TextLikeProps, 'type' | 'commitOnBlur'>) {
+  return <TextLike {...p} type="time" commitOnBlur />
 }
 
 type NumberProps = {

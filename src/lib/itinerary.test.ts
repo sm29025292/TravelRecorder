@@ -60,6 +60,36 @@ describe('groupItineraryByDate', () => {
     expect(groups[0].date).toBe('')
     expect(groups[0].items.map((i) => i.id)).toEqual(['a', 'b'])
   })
+
+  it('同日依 time 升冪、空 time 沉底', () => {
+    const items = [
+      row({ id: 'late', date: '2026-07-06', time: '10:00', sort: 1 }),
+      row({ id: 'blank', date: '2026-07-06', time: '', sort: 2 }),
+      row({ id: 'early', date: '2026-07-06', time: '09:00', sort: 3 }),
+    ]
+    const groups = groupItineraryByDate(items)
+    expect(groups).toHaveLength(1)
+    expect(groups[0].items.map((i) => i.id)).toEqual(['early', 'late', 'blank'])
+  })
+
+  it('同 time 以 sort 為 tie-breaker', () => {
+    const items = [
+      row({ id: 'b', date: '2026-07-06', time: '10:00', sort: 2 }),
+      row({ id: 'a', date: '2026-07-06', time: '10:00', sort: 1 }),
+    ]
+    const groups = groupItineraryByDate(items)
+    expect(groups[0].items.map((i) => i.id)).toEqual(['a', 'b'])
+  })
+
+  it('全空 time 時退回依 sort 升冪', () => {
+    const items = [
+      row({ id: 'c', date: '2026-07-06', time: '', sort: 3 }),
+      row({ id: 'a', date: '2026-07-06', time: '', sort: 1 }),
+      row({ id: 'b', date: '2026-07-06', time: '', sort: 2 }),
+    ]
+    const groups = groupItineraryByDate(items)
+    expect(groups[0].items.map((i) => i.id)).toEqual(['a', 'b', 'c'])
+  })
 })
 
 describe('weekdayLabel', () => {
