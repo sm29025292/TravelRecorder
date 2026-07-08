@@ -40,8 +40,10 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
   const nameOf = (id: string) => ms.find((m) => m.id === id)?.name || '(未命名)'
 
   const entries: SettleEntry[] = []
-  for (const e of expenses ?? [])
+  for (const e of expenses ?? []) {
+    if (e.paymentStatus === '已結清') continue // T19：已私下處理的債務，付錢與分攤都不計入
     entries.push({ payerId: e.payerId ?? '', amount: expenseSubtotal(e, trip), beneficiaryIds: e.participantIds ?? [] })
+  }
 
   const { balances, transfers } = settle(memberIds, entries)
   const balOf = (id: string) => balances.find((b) => b.id === id)
@@ -113,7 +115,7 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">分帳結算</h2>
         <p className="text-sm text-gray-500">
-          彙整花費：每筆依「付錢」與「分攤」計算。預設全體均分；「付錢」未指定的列不列入結算。
+          彙整花費：每筆依「付錢」與「分攤」計算，預設全體均分；「付錢」未指定或標「已結清」的列不列入結算。
         </p>
 
         {ms.length === 0 ? (
