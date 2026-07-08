@@ -46,7 +46,8 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
 
   const list = items ?? []
   const total = expensesTotal(list, trip)
-  const avg = expensesAverage(total, trip.peopleCount)
+  // T20：平均分母統一用分帳頁的成員數（trip.peopleCount 已無 UI，欄位保留僅為備份相容）
+  const avg = expensesAverage(total, members.length)
 
   return (
     <div className="space-y-3">
@@ -154,9 +155,11 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
           <span>
             總計：<b className="tabular-nums">{fmt(total)}</b> 元
           </span>
-          <span>
-            平均（{trip.peopleCount || 0} 人）：<b className="tabular-nums">{fmt(avg)}</b> 元
-          </span>
+          {members.length > 0 && (
+            <span>
+              平均（{members.length} 人）：<b className="tabular-nums">{fmt(avg)}</b> 元
+            </span>
+          )}
         </div>
       </div>
     </div>
