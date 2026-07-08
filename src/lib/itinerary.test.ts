@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { groupItineraryByDate, weekdayLabel, itineraryDaySubtotal } from './itinerary'
+import {
+  groupItineraryByDate,
+  weekdayLabel,
+  itineraryDaySubtotal,
+  datesInRange,
+} from './itinerary'
 import { itineraryTotal } from './money'
 import type { ItineraryItem, Trip } from '../types'
 
@@ -89,6 +94,109 @@ describe('groupItineraryByDate', () => {
     ]
     const groups = groupItineraryByDate(items)
     expect(groups[0].items.map((i) => i.id)).toEqual(['a', 'b', 'c'])
+  })
+})
+
+describe('groupItineraryByDate + range', () => {
+  it('補區間內沒行程列的空日組', () => {
+    const items = [row({ id: 'a', date: '2026-07-07', sort: 1 })]
+    const groups = groupItineraryByDate(items, {
+      startDate: '2026-07-06',
+      endDate: '2026-07-08',
+    })
+    expect(groups.map((g) => g.date)).toEqual(['2026-07-06', '2026-07-07', '2026-07-08'])
+    expect(groups[0].items).toEqual([])
+    expect(groups[1].items.map((i) => i.id)).toEqual(['a'])
+    expect(groups[2].items).toEqual([])
+  })
+
+  it('跨月補空日、區間外日期組仍存在', () => {
+    const items = [
+      row({ id: 'x', date: '2026-06-30', sort: 1 }),
+      row({ id: 'y', date: '2026-08-15', sort: 1 }),
+    ]
+    const groups = groupItineraryByDate(items, {
+      startDate: '2026-07-30',
+      endDate: '2026-08-02',
+    })
+    expect(groups.map((g) => g.date)).toEqual([
+      '2026-06-30',
+      '2026-07-30',
+      '2026-07-31',
+      '2026-08-01',
+      '2026-08-02',
+      '2026-08-15',
+    ])
+    expect(groups[1].items).toEqual([])
+    expect(groups[2].items).toEqual([])
+    expect(groups[3].items).toEqual([])
+    expect(groups[4].items).toEqual([])
+  })
+
+  it('未排日期組仍置底', () => {
+    const items = [row({ id: 'u', date: '', sort: 1 })]
+    const groups = groupItineraryByDate(items, {
+      startDate: '2026-07-06',
+      endDate: '2026-07-07',
+    })
+    expect(groups.map((g) => g.date)).toEqual(['2026-07-06', '2026-07-07', ''])
+  })
+
+  it('endDate < startDate 不補', () => {
+    const groups = groupItineraryByDate([], {
+      startDate: '2026-07-10',
+      endDate: '2026-07-06',
+    })
+    expect(groups).toEqual([])
+  })
+
+  it('日期格式不合不補', () => {
+    const groups = groupItineraryByDate([], {
+      startDate: '2026/07/06',
+      endDate: '2026-07-07',
+    })
+    expect(groups).toEqual([])
+  })
+
+  it('區間天數 > 90 不補', () => {
+    const groups = groupItineraryByDate([], {
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+    })
+    expect(groups).toEqual([])
+  })
+
+  it('不傳 range 行為與原本相同', () => {
+    const items = [row({ id: 'a', date: '2026-07-07', sort: 1 })]
+    const groups = groupItineraryByDate(items)
+    expect(groups.map((g) => g.date)).toEqual(['2026-07-07'])
+  })
+})
+
+describe('datesInRange', () => {
+  it('單日回單元素', () => {
+    expect(datesInRange('2026-07-06', '2026-07-06')).toEqual(['2026-07-06'])
+  })
+  it('跨月列日期', () => {
+    expect(datesInRange('2026-07-30', '2026-08-02')).toEqual([
+      '2026-07-30',
+      '2026-07-31',
+      '2026-08-01',
+      '2026-08-02',
+    ])
+  })
+  it('倒序回空', () => {
+    expect(datesInRange('2026-07-10', '2026-07-06')).toEqual([])
+  })
+  it('90 天上限（含端點）', () => {
+    // 2026-01-01 ~ 2026-03-31 為 90 天，允許
+    expect(datesInRange('2026-01-01', '2026-03-31')).toHaveLength(90)
+    // 2026-01-01 ~ 2026-04-01 為 91 天，超過
+    expect(datesInRange('2026-01-01', '2026-04-01')).toEqual([])
+  })
+  it('非法日期回空', () => {
+    expect(datesInRange('2026-02-30', '2026-03-01')).toEqual([])
+    expect(datesInRange('2026/07/06', '2026-07-07')).toEqual([])
   })
 })
 

@@ -6,18 +6,66 @@ export interface ItineraryDayGroup {
   items: ItineraryItem[]
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * 依本地時區列出 `startDate` 到 `endDate` 之間（含端點）的所有 `YYYY-MM-DD`。
+ * 只吃 `^\d{4}-\d{2}-\d{2}$`、`startDate <= endDate`、且區間天數 <= 90（防呆）；
+ * 其餘一律回空陣列。用 `new Date(y, m-1, d)` 而非 `new Date('YYYY-MM-DD')`（UTC 時區陷阱）。
+ */
+export function datesInRange(startDate: string, endDate: string): string[] {
+  if (!DATE_RE.test(startDate) || !DATE_RE.test(endDate)) return []
+  if (startDate.localeCompare(endDate) > 0) return []
+  const [sy, sm, sd] = startDate.split('-').map(Number)
+  const [ey, em, ed] = endDate.split('-').map(Number)
+  const start = new Date(sy, sm - 1, sd)
+  const end = new Date(ey, em - 1, ed)
+  if (
+    start.getFullYear() !== sy ||
+    start.getMonth() !== sm - 1 ||
+    start.getDate() !== sd ||
+    end.getFullYear() !== ey ||
+    end.getMonth() !== em - 1 ||
+    end.getDate() !== ed
+  ) {
+    return []
+  }
+  const out: string[] = []
+  const cur = new Date(start)
+  while (cur.getTime() <= end.getTime()) {
+    const y = cur.getFullYear()
+    const m = String(cur.getMonth() + 1).padStart(2, '0')
+    const d = String(cur.getDate()).padStart(2, '0')
+    out.push(`${y}-${m}-${d}`)
+    if (out.length > 90) return []
+    cur.setDate(cur.getDate() + 1)
+  }
+  return out
+}
+
 /**
  * 依日期分組行程；空 date 歸「未排日期」組並置底。
  * 非空 date 以字串升冪排序（YYYY-MM-DD 字串序＝時間序）；
  * 組內以 `time`（`HH:MM` 字串序）升冪，空 `time` 置底；同 `time` 或皆空以 `sort` 升冪（穩定）。
+ * 傳入 `range` 時，對區間內所有沒有行程列的日期補入 `{ date, items: [] }` 空日組；
+ * 區間外的日期組照常顯示；「未排日期」組照舊置底。
  */
-export function groupItineraryByDate(items: ItineraryItem[]): ItineraryDayGroup[] {
+export function groupItineraryByDate(
+  items: ItineraryItem[],
+  range?: { startDate: string; endDate: string },
+): ItineraryDayGroup[] {
   const map = new Map<string, ItineraryItem[]>()
   for (const it of items) {
     const key = it.date ?? ''
     const list = map.get(key)
     if (list) list.push(it)
     else map.set(key, [it])
+  }
+
+  if (range) {
+    for (const d of datesInRange(range.startDate, range.endDate)) {
+      if (!map.has(d)) map.set(d, [])
+    }
   }
 
   const dated: ItineraryDayGroup[] = []
