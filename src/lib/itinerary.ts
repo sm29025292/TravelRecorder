@@ -7,6 +7,22 @@ export interface ItineraryDayGroup {
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const TIME_RE = /^\d{2}:\d{2}$/
+
+/**
+ * 計算開始→結束的小時數（例：09:00→12:30 = 3.5）。
+ * 兩者皆為 `HH:MM` 且 `end > start`（字串比較，同格式下等同時間序）→ 回傳
+ * `round(hours, 2)`；其餘（含跨夜 `end <= start`、任一空、格式不合）→ `null`。
+ * 跨夜刻意不自動處理，使用者需自己填時數（避免猜錯日期）。
+ */
+export function hoursBetween(start: string, end: string): number | null {
+  if (!TIME_RE.test(start) || !TIME_RE.test(end)) return null
+  if (end <= start) return null
+  const [sh, sm] = start.split(':').map(Number)
+  const [eh, em] = end.split(':').map(Number)
+  const minutes = eh * 60 + em - (sh * 60 + sm)
+  return round(minutes / 60, 2)
+}
 
 /**
  * 依本地時區列出 `startDate` 到 `endDate` 之間（含端點）的所有 `YYYY-MM-DD`。

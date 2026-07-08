@@ -4,6 +4,7 @@ import {
   weekdayLabel,
   itineraryDaySubtotal,
   datesInRange,
+  hoursBetween,
 } from './itinerary'
 import { itineraryTotal } from './money'
 import type { ItineraryItem, Trip } from '../types'
@@ -197,6 +198,30 @@ describe('datesInRange', () => {
   it('非法日期回空', () => {
     expect(datesInRange('2026-02-30', '2026-03-01')).toEqual([])
     expect(datesInRange('2026/07/06', '2026-07-07')).toEqual([])
+  })
+})
+
+describe('hoursBetween', () => {
+  it('一般整點差回小時數', () => {
+    expect(hoursBetween('09:00', '12:00')).toBe(3)
+  })
+  it('半小時支援小數（09:00→12:30 = 3.5）', () => {
+    expect(hoursBetween('09:00', '12:30')).toBe(3.5)
+  })
+  it('分鐘精度四捨五入到兩位（10:15→10:45 = 0.5）', () => {
+    expect(hoursBetween('10:15', '10:45')).toBe(0.5)
+  })
+  it('跨夜（end <= start）回 null', () => {
+    expect(hoursBetween('23:00', '01:00')).toBeNull()
+    expect(hoursBetween('09:00', '09:00')).toBeNull()
+    expect(hoursBetween('12:30', '09:00')).toBeNull()
+  })
+  it('格式不合回 null', () => {
+    expect(hoursBetween('9:00', '12:00')).toBeNull()
+    expect(hoursBetween('09:00', '12:0')).toBeNull()
+    expect(hoursBetween('', '12:00')).toBeNull()
+    expect(hoursBetween('09:00', '')).toBeNull()
+    expect(hoursBetween('09-00', '12:00')).toBeNull()
   })
 })
 

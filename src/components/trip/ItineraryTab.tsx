@@ -10,6 +10,7 @@ import {
   groupItineraryByDate,
   itineraryDaySubtotal,
   weekdayLabel,
+  hoursBetween,
 } from '../../lib/itinerary'
 import { visitedAttractionIds } from '../../lib/visited'
 
@@ -33,6 +34,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
       tripId: trip.id,
       date: prefillDate,
       time: '',
+      endTime: '',
       attractionId: '',
       activity: '',
       hours: 0,
@@ -51,6 +53,17 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
   const update = (id: string, patch: Partial<ItineraryItem>) => db.itinerary.update(id, patch)
   const remove = (id: string) => db.itinerary.delete(id)
 
+  function updateStart(it: ItineraryItem, v: string) {
+    const h = hoursBetween(v, it.endTime ?? '')
+    if (h !== null) update(it.id, { time: v, hours: h })
+    else update(it.id, { time: v })
+  }
+  function updateEnd(it: ItineraryItem, v: string) {
+    const h = hoursBetween(it.time, v)
+    if (h !== null) update(it.id, { endTime: v, hours: h })
+    else update(it.id, { endTime: v })
+  }
+
   const list = items ?? []
   const cur = trip.currencyLabel || trip.currencyCode
   const groups = groupItineraryByDate(list, {
@@ -66,7 +79,10 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           <DateInput value={it.date} onChange={(v) => update(it.id, { date: v })} />
         </Td>
         <Td className="w-24">
-          <TimeInput value={it.time} onChange={(v) => update(it.id, { time: v })} />
+          <TimeInput value={it.time} onChange={(v) => updateStart(it, v)} />
+        </Td>
+        <Td className="w-24">
+          <TimeInput value={it.endTime ?? ''} onChange={(v) => updateEnd(it, v)} />
         </Td>
         <Td>
           <AttractionPicker
@@ -137,7 +153,8 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
       <thead className="bg-gray-50 text-left text-xs text-gray-500">
         <tr>
           <Th>日期</Th>
-          <Th>時間</Th>
+          <Th>開始</Th>
+          <Th>結束</Th>
           <Th>景點</Th>
           <Th>行程／活動</Th>
           <Th className="text-right">時數</Th>
@@ -156,11 +173,11 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
     <div className="space-y-3">
       {groups.length === 0 ? (
         <div className="overflow-x-auto rounded-lg border bg-white">
-          <table className="w-full min-w-[66rem] text-sm">
+          <table className="w-full min-w-[72rem] text-sm">
             {renderHead()}
             <tbody>
               <tr>
-                <td colSpan={11} className="p-6 text-center text-gray-400">
+                <td colSpan={12} className="p-6 text-center text-gray-400">
                   尚無行程，點下方「新增一列」。先到「景點庫」加景點，這裡的「景點」欄就能下拉選取。
                 </td>
               </tr>
@@ -207,7 +224,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
                   </div>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[66rem] text-sm">
+                  <table className="w-full min-w-[72rem] text-sm">
                     {renderHead()}
                     <tbody>{g.items.map(renderRow)}</tbody>
                   </table>

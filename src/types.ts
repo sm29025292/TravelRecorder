@@ -65,7 +65,8 @@ export interface ItineraryItem {
   id: ID
   tripId: ID
   date: string
-  time: string
+  time: string // 開始時間 HH:MM
+  endTime?: string // 結束時間 HH:MM；optional 相容舊資料/舊備份
   attractionId: ID // 對應景點；'' 表示未選
   activity: string // 行程 / 活動（自由文字）
   hours: number // 時間(HR)
