@@ -16,6 +16,7 @@ import {
 import { importAttractionsFromCSV } from '../lib/importAttractions'
 import { applyMerge, findDuplicateGroups } from '../lib/dedupeAttractions'
 import { findOrphanItinerary } from '../lib/orphanItinerary'
+import { visitedAttractionIds } from '../lib/visited'
 
 const inputCls =
   'rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
@@ -172,6 +173,10 @@ export default function Attractions() {
 
   const allAttractions = attractions ?? []
   const opts = getLocationOptions(allAttractions)
+  const visitedIds = useMemo(
+    () => visitedAttractionIds(itinerary ?? []),
+    [itinerary],
+  )
 
   // 篩選後建樹
   const fNameQ = fName.trim().toLowerCase()
@@ -318,7 +323,17 @@ export default function Attractions() {
             {list.map((a) => (
               <tr key={a.id} className="border-t">
                 <Td className="min-w-[8rem]">
-                  <TextInput value={a.name} onChange={(v) => update(a.id, { name: v })} />
+                  <div className="flex items-center gap-1">
+                    <TextInput value={a.name} onChange={(v) => update(a.id, { name: v })} />
+                    {visitedIds.has(a.id) && (
+                      <span
+                        title="已排入行程（去過）"
+                        className="shrink-0 text-sm font-bold text-emerald-600"
+                      >
+                        ✓
+                      </span>
+                    )}
+                  </div>
                 </Td>
                 <Td className="min-w-[10rem]">
                   <TextInput value={a.address} onChange={(v) => update(a.id, { address: v })} />

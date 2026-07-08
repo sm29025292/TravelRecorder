@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { Trip, ItineraryItem } from '../../types'
 import { db } from '../../db/db'
@@ -10,6 +11,7 @@ import {
   itineraryDaySubtotal,
   weekdayLabel,
 } from '../../lib/itinerary'
+import { visitedAttractionIds } from '../../lib/visited'
 
 export default function ItineraryTab({ trip }: { trip: Trip }) {
   const items = useLiveQuery(
@@ -17,6 +19,11 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
     [trip.id],
   )
   const attractions = useLiveQuery(() => db.attractions.toArray(), [], [])
+  const allItinerary = useLiveQuery(() => db.itinerary.toArray(), [], [])
+  const visitedIds = useMemo(
+    () => visitedAttractionIds(allItinerary ?? []),
+    [allItinerary],
+  )
 
   async function addRow(prefillDate = '') {
     const list = items ?? []
@@ -67,6 +74,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
             value={it.attractionId}
             onChange={(id) => update(it.id, { attractionId: id })}
             defaultCountry={trip.country ?? ''}
+            visitedIds={visitedIds}
           />
         </Td>
         <Td className="min-w-[10rem]">

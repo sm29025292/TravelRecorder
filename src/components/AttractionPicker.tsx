@@ -8,11 +8,13 @@ export default function AttractionPicker({
   value,
   onChange,
   defaultCountry,
+  visitedIds,
 }: {
   attractions: Attraction[]
   value: string
   onChange: (id: string) => void
   defaultCountry?: string
+  visitedIds?: Set<string>
 }) {
   const [fCountry, setFCountry] = useState(defaultCountry ?? '')
   const [fType, setFType] = useState<Attraction['type']>('')
@@ -52,9 +54,10 @@ export default function AttractionPicker({
           <optgroup key={g.label} label={g.label}>
             {g.list.map((a) => {
               const stars = '★'.repeat(Math.min(3, Math.max(0, a.priority | 0)))
+              const visited = visitedIds?.has(a.id) ? ' ✓' : ''
               return (
                 <option key={a.id} value={a.id}>
-                  {(stars ? stars + ' ' : '') + (a.name || '(未命名)')}
+                  {(stars ? stars + ' ' : '') + (a.name || '(未命名)') + visited}
                 </option>
               )
             })}
