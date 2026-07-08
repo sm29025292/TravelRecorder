@@ -106,9 +106,6 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
         <Field label="匯率（對台幣）">
           <NumberInput value={trip.exchangeRate} step="0.0001" onChange={(n) => update({ exchangeRate: n })} />
         </Field>
-        <Field label="人數（算平均用）">
-          <NumberInput value={trip.peopleCount} step="1" onChange={(n) => update({ peopleCount: n })} />
-        </Field>
       </div>
       <p className="text-xs text-gray-400">
         1 {trip.currencyLabel || '外幣'} = {trip.exchangeRate || 0} 台幣。花費與行程會用這個匯率自動換算，改匯率時所有金額即時更新。
