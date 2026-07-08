@@ -3,7 +3,7 @@ import type { Trip, Member } from '../../types'
 import { db } from '../../db/db'
 import { newId } from '../../lib/id'
 import { TextInput, DateInput, IconButton, Th, Td } from '../cells'
-import { expenseSubtotal, itinerarySubtotal, settle, fmt } from '../../lib/money'
+import { expenseSubtotal, settle, fmt } from '../../lib/money'
 import type { SettleEntry } from '../../lib/money'
 
 export default function SettlementTab({ trip }: { trip: Trip }) {
@@ -14,16 +14,6 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
   )
   const expenses = useLiveQuery(
     () => db.expenses.where('tripId').equals(trip.id).toArray(),
-    [trip.id],
-    [],
-  )
-  const itinerary = useLiveQuery(
-    () => db.itinerary.where('tripId').equals(trip.id).toArray(),
-    [trip.id],
-    [],
-  )
-  const shopping = useLiveQuery(
-    () => db.shopping.where('tripId').equals(trip.id).toArray(),
     [trip.id],
     [],
   )
@@ -52,10 +42,6 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
   const entries: SettleEntry[] = []
   for (const e of expenses ?? [])
     entries.push({ payerId: e.payerId ?? '', amount: expenseSubtotal(e, trip), beneficiaryIds: e.participantIds ?? [] })
-  for (const i of itinerary ?? [])
-    entries.push({ payerId: i.payerId ?? '', amount: itinerarySubtotal(i, trip), beneficiaryIds: i.participantIds ?? [] })
-  for (const s of shopping ?? [])
-    entries.push({ payerId: s.payerId ?? '', amount: expenseSubtotal(s, trip), beneficiaryIds: s.participantIds ?? [] })
 
   const { balances, transfers } = settle(memberIds, entries)
   const balOf = (id: string) => balances.find((b) => b.id === id)
@@ -127,7 +113,7 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">分帳結算</h2>
         <p className="text-sm text-gray-500">
-          彙整花費＋行程＋購物：每筆依「付錢」與「分攤」計算。預設全體均分；「付錢」未指定的列不列入結算。
+          彙整花費：每筆依「付錢」與「分攤」計算。預設全體均分；「付錢」未指定的列不列入結算。
         </p>
 
         {ms.length === 0 ? (
