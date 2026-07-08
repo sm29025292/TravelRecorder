@@ -63,7 +63,9 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
               <Th className="text-right">小計(元)</Th>
               <Th>付錢</Th>
               <Th>分攤</Th>
-              <Th>狀態</Th>
+              <Th>
+                <span title="標「已結清」的列不列入分帳結算">狀態</span>
+              </Th>
               <Th>備註</Th>
               <Th></Th>
             </tr>
