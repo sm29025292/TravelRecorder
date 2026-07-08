@@ -95,7 +95,8 @@ export interface Transfer {
 }
 
 /**
- * 計算分帳：每位成員的已付/應分攤/結餘，並用貪婪法產生最少筆數的結算轉帳。
+ * 計算分帳：每位成員的已付/應分攤/結餘，並以「成對淨額」產生結算轉帳
+ * （兩兩互欠對沖；每筆轉帳都對應實際債務關係、可追溯，筆數可能多於全域最少筆數）。
  * - `beneficiaryIds` 空、或過濾後為空 → 全體均分。
  * - `payerId` 非現有成員的 entry 直接略過（未設付錢者的列不納入結算）。
  */
@@ -106,6 +107,7 @@ export function settle(
   const valid = new Set(memberIds)
   const paid = new Map<string, number>(memberIds.map((id) => [id, 0]))
   const share = new Map<string, number>(memberIds.map((id) => [id, 0]))
+  const debt = new Map<string, number>() // `${from}|${to}` → from 累計欠 to 多少
 
   for (const e of entries) {
     if (!valid.has(e.payerId)) continue
@@ -114,7 +116,13 @@ export function settle(
     if (bens.length === 0) continue
     paid.set(e.payerId, (paid.get(e.payerId) ?? 0) + e.amount)
     const per = e.amount / bens.length
-    for (const b of bens) share.set(b, (share.get(b) ?? 0) + per)
+    for (const b of bens) {
+      share.set(b, (share.get(b) ?? 0) + per)
+      if (b !== e.payerId) {
+        const key = `${b}|${e.payerId}`
+        debt.set(key, (debt.get(key) ?? 0) + per)
+      }
+    }
   }
 
   const balances: MemberBalance[] = memberIds.map((id) => ({
@@ -124,29 +132,56 @@ export function settle(
     balance: round((paid.get(id) ?? 0) - (share.get(id) ?? 0)),
   }))
 
-  // 貪婪結算：最大債權人 ↔ 最大債務人
-  const creditors = balances
-    .filter((b) => b.balance > 0)
-    .map((b) => ({ id: b.id, amt: b.balance }))
-    .sort((a, b) => b.amt - a.amt)
-  const debtors = balances
-    .filter((b) => b.balance < 0)
-    .map((b) => ({ id: b.id, amt: -b.balance }))
-    .sort((a, b) => b.amt - a.amt)
-
+  // 成對淨額：每一對成員互欠對沖，淨額非零者輸出一筆轉帳（依 memberIds 順序）
   const transfers: Transfer[] = []
-  let ci = 0
-  let di = 0
-  while (ci < creditors.length && di < debtors.length) {
-    const c = creditors[ci]
-    const d = debtors[di]
-    const amt = round(Math.min(c.amt, d.amt))
-    if (amt > 0) transfers.push({ from: d.id, to: c.id, amount: amt })
-    c.amt = round(c.amt - amt)
-    d.amt = round(d.amt - amt)
-    if (c.amt <= 0.005) ci++
-    if (d.amt <= 0.005) di++
+  for (let i = 0; i < memberIds.length; i++) {
+    for (let j = i + 1; j < memberIds.length; j++) {
+      const a = memberIds[i]
+      const b = memberIds[j]
+      const net = round((debt.get(`${a}|${b}`) ?? 0) - (debt.get(`${b}|${a}`) ?? 0))
+      if (net > 0.005) transfers.push({ from: a, to: b, amount: net })
+      else if (net < -0.005) transfers.push({ from: b, to: a, amount: -net })
+    }
   }
 
   return { balances, transfers }
+}
+
+export interface CurrencySettleEntry extends SettleEntry {
+  currency: string // 'TWD' 或外幣代碼；空字串視為 TWD
+}
+
+export interface CurrencySettlement {
+  currency: string
+  balances: MemberBalance[]
+  transfers: Transfer[]
+}
+
+/**
+ * 按幣別分桶結算：各幣別獨立跑 `settle`，互不換匯、不跨幣別對沖。
+ * TWD 桶排最前、其餘依 entries 出現順序；全零桶（無任何有效付錢列）不回傳。
+ */
+export function settleByCurrency(
+  memberIds: string[],
+  entries: CurrencySettleEntry[],
+): CurrencySettlement[] {
+  const buckets = new Map<string, SettleEntry[]>()
+  for (const e of entries) {
+    const cur = e.currency || 'TWD'
+    const list = buckets.get(cur)
+    if (list) list.push(e)
+    else buckets.set(cur, [e])
+  }
+
+  const currencies = [...buckets.keys()].sort(
+    (a, b) => (a === 'TWD' ? 0 : 1) - (b === 'TWD' ? 0 : 1),
+  )
+
+  const out: CurrencySettlement[] = []
+  for (const cur of currencies) {
+    const { balances, transfers } = settle(memberIds, buckets.get(cur) ?? [])
+    const hasActivity = transfers.length > 0 || balances.some((b) => b.paid !== 0 || b.share !== 0)
+    if (hasActivity) out.push({ currency: cur, balances, transfers })
+  }
+  return out
 }

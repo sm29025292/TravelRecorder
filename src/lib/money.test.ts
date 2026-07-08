@@ -10,6 +10,7 @@ import {
   itineraryTotal,
   itineraryForeignSubtotal,
   settle,
+  settleByCurrency,
 } from './money'
 import type { Trip } from '../types'
 
@@ -140,5 +141,66 @@ describe('settle（分帳）', () => {
     expect(transfers).toContainEqual({ from: 'B', to: 'A', amount: 300 })
     expect(transfers).toContainEqual({ from: 'C', to: 'A', amount: 300 })
     expect(transfers).toHaveLength(2)
+  })
+
+  it('成對淨額：A 付 1200、B 付 300（三人均分）→ B→A 300、C→A 400、C→B 100', () => {
+    const { transfers } = settle(
+      ['A', 'B', 'C'],
+      [
+        { payerId: 'A', amount: 1200, beneficiaryIds: [] }, // B、C 各欠 A 400
+        { payerId: 'B', amount: 300, beneficiaryIds: [] }, // A、C 各欠 B 100
+      ],
+    )
+    expect(transfers).toEqual([
+      { from: 'B', to: 'A', amount: 300 },
+      { from: 'C', to: 'A', amount: 400 },
+      { from: 'C', to: 'B', amount: 100 },
+    ])
+  })
+
+  it('成對淨額不改道債務：B 欠 A、C 欠 B → 各自轉帳，不會變成 C 直接付 A', () => {
+    const { transfers } = settle(
+      ['A', 'B', 'C'],
+      [
+        { payerId: 'A', amount: 100, beneficiaryIds: ['B'] },
+        { payerId: 'B', amount: 100, beneficiaryIds: ['C'] },
+      ],
+    )
+    expect(transfers).toEqual([
+      { from: 'B', to: 'A', amount: 100 },
+      { from: 'C', to: 'B', amount: 100 },
+    ])
+  })
+})
+
+describe('settleByCurrency（多幣別分帳）', () => {
+  it('各幣別獨立結算、不換匯，TWD 桶排最前', () => {
+    const res = settleByCurrency(
+      ['A', 'B'],
+      [
+        { payerId: 'A', currency: 'JPY', amount: 1000, beneficiaryIds: [] }, // B 欠 A 500 JPY
+        { payerId: 'B', currency: 'TWD', amount: 200, beneficiaryIds: [] }, // A 欠 B 100 TWD
+      ],
+    )
+    expect(res.map((r) => r.currency)).toEqual(['TWD', 'JPY'])
+    expect(res[0].transfers).toEqual([{ from: 'A', to: 'B', amount: 100 }])
+    expect(res[1].transfers).toEqual([{ from: 'B', to: 'A', amount: 500 }])
+  })
+
+  it('空幣別視為 TWD；無有效付錢列的桶不回傳', () => {
+    const res = settleByCurrency(
+      ['A', 'B'],
+      [
+        { payerId: 'A', currency: '', amount: 100, beneficiaryIds: [] },
+        { payerId: '', currency: 'JPY', amount: 999, beneficiaryIds: [] }, // 付錢者未設 → JPY 桶全零
+      ],
+    )
+    expect(res).toHaveLength(1)
+    expect(res[0].currency).toBe('TWD')
+    expect(res[0].transfers).toEqual([{ from: 'B', to: 'A', amount: 50 }])
+  })
+
+  it('無任何可結算列 → 回傳空陣列', () => {
+    expect(settleByCurrency(['A', 'B'], [])).toEqual([])
   })
 })

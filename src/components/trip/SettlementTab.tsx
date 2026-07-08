@@ -3,8 +3,8 @@ import type { Trip, Member } from '../../types'
 import { db } from '../../db/db'
 import { newId } from '../../lib/id'
 import { TextInput, DateInput, IconButton, Th, Td } from '../cells'
-import { expenseSubtotal, settle, fmt } from '../../lib/money'
-import type { SettleEntry } from '../../lib/money'
+import { settleByCurrency, fmt } from '../../lib/money'
+import type { CurrencySettleEntry } from '../../lib/money'
 
 export default function SettlementTab({ trip }: { trip: Trip }) {
   const members = useLiveQuery(
@@ -39,14 +39,17 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
   const memberIds = ms.map((m) => m.id)
   const nameOf = (id: string) => ms.find((m) => m.id === id)?.name || '(未命名)'
 
-  const entries: SettleEntry[] = []
+  const entries: CurrencySettleEntry[] = []
   for (const e of expenses ?? []) {
     if (e.paymentStatus === '已結清') continue // T19：已私下處理的債務，付錢與分攤都不計入
-    entries.push({ payerId: e.payerId ?? '', amount: expenseSubtotal(e, trip), beneficiaryIds: e.participantIds ?? [] })
+    const payerId = e.payerId ?? ''
+    const beneficiaryIds = e.participantIds ?? []
+    // T24：金額入該列幣別的桶（不換匯）；「手續費(元)」是台幣，另計一筆入 TWD 桶
+    entries.push({ payerId, currency: e.currency, amount: e.amount || 0, beneficiaryIds })
+    if (e.fee) entries.push({ payerId, currency: 'TWD', amount: e.fee, beneficiaryIds })
   }
 
-  const { balances, transfers } = settle(memberIds, entries)
-  const balOf = (id: string) => balances.find((b) => b.id === id)
+  const settlements = settleByCurrency(memberIds, entries)
 
   return (
     <div className="space-y-6">
@@ -115,63 +118,78 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">分帳結算</h2>
         <p className="text-sm text-gray-500">
-          彙整花費：每筆依「付錢」與「分攤」計算，預設全體均分；「付錢」未指定或標「已結清」的列不列入結算。
+          彙整花費：每筆依「付錢」與「分攤」計算，預設全體均分；台幣與外幣各自結算、不換匯（外幣列的手續費以台幣計）；「付錢」未指定或標「已結清」的列不列入結算。
         </p>
 
         {ms.length === 0 ? (
           <p className="rounded border border-dashed p-6 text-center text-gray-400">先新增同行者才能結算。</p>
+        ) : settlements.length === 0 ? (
+          <p className="rounded border border-dashed p-6 text-center text-gray-400">尚無可結算的花費。</p>
         ) : (
-          <>
-            <div className="overflow-x-auto rounded-lg border bg-white">
-              <table className="w-full min-w-[32rem] text-sm">
-                <thead className="bg-gray-50 text-left text-xs text-gray-500">
-                  <tr>
-                    <Th>成員</Th>
-                    <Th className="text-right">已付(元)</Th>
-                    <Th className="text-right">應分攤(元)</Th>
-                    <Th className="text-right">結餘(元)</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ms.map((m) => {
-                    const b = balOf(m.id)
-                    const bal = b?.balance ?? 0
-                    return (
-                      <tr key={m.id} className="border-t">
-                        <Td>{m.name || '(未命名)'}</Td>
-                        <Td className="text-right tabular-nums">{fmt(b?.paid ?? 0)}</Td>
-                        <Td className="text-right tabular-nums">{fmt(b?.share ?? 0)}</Td>
-                        <Td
-                          className={`text-right font-medium tabular-nums ${
-                            bal > 0 ? 'text-green-600' : bal < 0 ? 'text-red-600' : ''
-                          }`}
-                        >
-                          {bal > 0 ? `應收 +${fmt(bal)}` : bal < 0 ? `應付 ${fmt(bal)}` : '0'}
-                        </Td>
+          settlements.map(({ currency, balances, transfers }) => {
+            const unit = currency === 'TWD' ? '元' : currency
+            const title =
+              currency === 'TWD'
+                ? '台幣'
+                : currency === trip.currencyCode && trip.currencyLabel
+                  ? `${trip.currencyLabel}（${currency}）`
+                  : currency
+            const balOf = (id: string) => balances.find((b) => b.id === id)
+            return (
+              <div key={currency} className="space-y-3">
+                <h3 className="text-base font-semibold">{title}</h3>
+                <div className="overflow-x-auto rounded-lg border bg-white">
+                  <table className="w-full min-w-[32rem] text-sm">
+                    <thead className="bg-gray-50 text-left text-xs text-gray-500">
+                      <tr>
+                        <Th>成員</Th>
+                        <Th className="text-right">已付({unit})</Th>
+                        <Th className="text-right">應分攤({unit})</Th>
+                        <Th className="text-right">結餘({unit})</Th>
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {ms.map((m) => {
+                        const b = balOf(m.id)
+                        const bal = b?.balance ?? 0
+                        return (
+                          <tr key={m.id} className="border-t">
+                            <Td>{m.name || '(未命名)'}</Td>
+                            <Td className="text-right tabular-nums">{fmt(b?.paid ?? 0)}</Td>
+                            <Td className="text-right tabular-nums">{fmt(b?.share ?? 0)}</Td>
+                            <Td
+                              className={`text-right font-medium tabular-nums ${
+                                bal > 0 ? 'text-green-600' : bal < 0 ? 'text-red-600' : ''
+                              }`}
+                            >
+                              {bal > 0 ? `應收 +${fmt(bal)}` : bal < 0 ? `應付 ${fmt(bal)}` : '0'}
+                            </Td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
 
-            <div className="rounded-lg border bg-white p-4">
-              <h3 className="mb-2 text-sm font-semibold">結算建議</h3>
-              {transfers.length === 0 ? (
-                <p className="text-sm text-gray-500">已結清，無需轉帳。</p>
-              ) : (
-                <ul className="space-y-1 text-sm">
-                  {transfers.map((t, i) => (
-                    <li key={i}>
-                      <span className="font-medium text-red-600">{nameOf(t.from)}</span> 應付給{' '}
-                      <span className="font-medium text-green-600">{nameOf(t.to)}</span>{' '}
-                      <b className="tabular-nums">{fmt(t.amount)}</b> 元
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </>
+                <div className="rounded-lg border bg-white p-4">
+                  <h3 className="mb-2 text-sm font-semibold">結算建議</h3>
+                  {transfers.length === 0 ? (
+                    <p className="text-sm text-gray-500">已結清，無需轉帳。</p>
+                  ) : (
+                    <ul className="space-y-1 text-sm">
+                      {transfers.map((t, i) => (
+                        <li key={i}>
+                          <span className="font-medium text-red-600">{nameOf(t.from)}</span> 應付給{' '}
+                          <span className="font-medium text-green-600">{nameOf(t.to)}</span>{' '}
+                          <b className="tabular-nums">{fmt(t.amount)}</b> {unit}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )
+          })
         )}
       </section>
     </div>
