@@ -46,7 +46,10 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
 
   const list = items ?? []
   const cur = trip.currencyLabel || trip.currencyCode
-  const groups = groupItineraryByDate(list)
+  const groups = groupItineraryByDate(list, {
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+  })
   const grandSub = itineraryDaySubtotal(list, trip)
 
   function renderRow(it: ItineraryItem) {
@@ -143,7 +146,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
 
   return (
     <div className="space-y-3">
-      {list.length === 0 ? (
+      {groups.length === 0 ? (
         <div className="overflow-x-auto rounded-lg border bg-white">
           <table className="w-full min-w-[66rem] text-sm">
             {renderHead()}
@@ -159,9 +162,29 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
       ) : (
         <div className="flex flex-col gap-4">
           {groups.map((g) => {
-            const sub = itineraryDaySubtotal(g.items, trip)
             const wk = weekdayLabel(g.date)
             const title = g.date ? `${g.date}${wk ? ` (${wk})` : ''}` : '未排日期'
+            if (g.items.length === 0) {
+              return (
+                <div
+                  key={g.date || '__undated__'}
+                  className="overflow-hidden rounded-lg border bg-white"
+                >
+                  <div className="flex flex-wrap items-center gap-3 border-b bg-gray-50 px-3 py-2 text-sm">
+                    <div className="font-medium">{title}</div>
+                  </div>
+                  <div className="bg-gray-50 px-3 py-2 text-sm">
+                    <button
+                      onClick={() => addRow(g.date)}
+                      className="text-sky-600 hover:text-sky-700"
+                    >
+                      + 在{g.date ? '這天' : '未排日期'}新增一列
+                    </button>
+                  </div>
+                </div>
+              )
+            }
+            const sub = itineraryDaySubtotal(g.items, trip)
             return (
               <div
                 key={g.date || '__undated__'}
