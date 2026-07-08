@@ -30,8 +30,16 @@ export interface Attraction {
   url: string
   notes: string
   priority: number // 1-3，0 表示未設定
-  type: 'attraction' | 'food' | '' // 類型：景點 / 美食 / 未設
+  type: 'attraction' | 'food' | 'lodging' | 'transport' | '' // 類型：景點 / 美食 / 住宿 / 交通 / 未設
 }
+
+/** 景點類型下拉選項（共用常數，避免四處硬寫）。 */
+export const ATTRACTION_TYPES = [
+  { value: 'attraction', label: '景點' },
+  { value: 'food', label: '美食' },
+  { value: 'lodging', label: '住宿' },
+  { value: 'transport', label: '交通' },
+] as const
 
 /** 花費（機票 / 飯店 / 保險等大項）。 */
 export interface ExpenseItem {

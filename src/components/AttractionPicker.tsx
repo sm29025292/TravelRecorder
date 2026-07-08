@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Attraction } from '../types'
+import { ATTRACTION_TYPES, type Attraction } from '../types'
 import { Select } from './cells'
 import { groupByLocation, getLocationOptions } from '../lib/group'
 
@@ -15,7 +15,7 @@ export default function AttractionPicker({
   defaultCountry?: string
 }) {
   const [fCountry, setFCountry] = useState(defaultCountry ?? '')
-  const [fType, setFType] = useState<'' | 'attraction' | 'food'>('')
+  const [fType, setFType] = useState<Attraction['type']>('')
 
   const opts = getLocationOptions(attractions)
 
@@ -37,10 +37,13 @@ export default function AttractionPicker({
             </option>
           ))}
         </Select>
-        <Select value={fType} onChange={(v) => setFType(v as '' | 'attraction' | 'food')} className="w-20 text-xs py-0.5">
+        <Select value={fType} onChange={(v) => setFType(v as Attraction['type'])} className="w-20 text-xs py-0.5">
           <option value="">全部</option>
-          <option value="attraction">景點</option>
-          <option value="food">美食</option>
+          {ATTRACTION_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
         </Select>
       </div>
       <Select value={value} onChange={onChange} className="min-w-[8rem]">
