@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../db/db'
 import { newId } from '../lib/id'
-import type { Attraction, ItineraryItem, Trip } from '../types'
+import { ATTRACTION_TYPES, type Attraction, type ItineraryItem, type Trip } from '../types'
 import { TextInput, IconButton, Th, Td, Select } from '../components/cells'
 import {
   buildLocationTree,
@@ -108,14 +108,14 @@ export default function Attractions() {
   const [newCountry, setNewCountry] = useState('')
   const [newCity, setNewCity] = useState('')
   const [newDistrict, setNewDistrict] = useState('')
-  const [newType, setNewType] = useState<'' | 'attraction' | 'food'>('')
+  const [newType, setNewType] = useState<Attraction['type']>('')
   const [msg, setMsg] = useState('')
 
   // 篩選狀態
   const [fCountry, setFCountry] = useState('')
   const [fCity, setFCity] = useState('')
   const [fDistrict, setFDistrict] = useState('')
-  const [fType, setFType] = useState<'' | 'attraction' | 'food'>('')
+  const [fType, setFType] = useState<Attraction['type']>('')
   const [fName, setFName] = useState('')
 
   // 樹狀摺疊狀態
@@ -354,11 +354,14 @@ export default function Attractions() {
                 <Td className="w-24">
                   <Select
                     value={a.type ?? ''}
-                    onChange={(v) => update(a.id, { type: v as '' | 'attraction' | 'food' })}
+                    onChange={(v) => update(a.id, { type: v as Attraction['type'] })}
                   >
                     <option value="">未設</option>
-                    <option value="attraction">景點</option>
-                    <option value="food">美食</option>
+                    {ATTRACTION_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
                   </Select>
                 </Td>
                 <Td className="whitespace-nowrap">
@@ -409,12 +412,15 @@ export default function Attractions() {
             <span className="mb-1 block text-gray-600">類型</span>
             <Select
               value={newType}
-              onChange={(v) => setNewType(v as '' | 'attraction' | 'food')}
+              onChange={(v) => setNewType(v as Attraction['type'])}
               className="w-24"
             >
               <option value="">未設</option>
-              <option value="attraction">景點</option>
-              <option value="food">美食</option>
+              {ATTRACTION_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
             </Select>
           </label>
           <button
@@ -518,12 +524,15 @@ export default function Attractions() {
           <label className="text-xs text-gray-500">類型</label>
           <Select
             value={fType}
-            onChange={(v) => setFType(v as '' | 'attraction' | 'food')}
+            onChange={(v) => setFType(v as Attraction['type'])}
             className="w-24"
           >
             <option value="">全部</option>
-            <option value="attraction">景點</option>
-            <option value="food">美食</option>
+            {ATTRACTION_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
           </Select>
         </div>
         <div className="flex flex-col gap-0.5">
@@ -908,7 +917,7 @@ function DedupePanel({
                               <span className="text-xs text-gray-500">{loc}</span>
                               {a.type && (
                                 <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
-                                  {a.type === 'food' ? '美食' : '景點'}
+                                  {ATTRACTION_TYPES.find((t) => t.value === a.type)?.label ?? '景點'}
                                 </span>
                               )}
                             </div>
