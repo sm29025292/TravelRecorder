@@ -119,13 +119,23 @@ export default function SyncDialog({ onClose, setMsg }: Props) {
       const localStr = localMax ? new Date(localMax).toLocaleString() : '（本機無資料）'
       const cloudStr = data.exportedAt || snap.updatedAt || '（未知）'
       if (
-        !confirm(
-          `雲端匯出時間：${cloudStr}\n本機最後更新：${localStr}\n\n下載會以雲端資料「取代」本機所有內容，確定？`,
+        confirm(
+          `雲端匯出時間：${cloudStr}\n本機最後更新：${localStr}\n\n要以「合併」方式下載嗎？\n合併＝保留本機資料、同 id 以雲端為準；本機已刪除但雲端仍有的資料會被加回。\n（按「取消」改問是否「取代」）`,
         )
-      )
+      ) {
+        await importAll(data, 'merge')
+        setMsg('已從雲端還原備份（合併）')
         return
-      await importAll(data, 'replace')
-      setMsg('已從雲端還原備份')
+      }
+      if (
+        confirm(
+          `雲端匯出時間：${cloudStr}\n本機最後更新：${localStr}\n\n改以「取代」下載？將清空本機所有資料、完全以雲端內容取代。`,
+        )
+      ) {
+        await importAll(data, 'replace')
+        setMsg('已從雲端還原備份（取代）')
+        return
+      }
     } catch (e) {
       setErr((e as Error).message)
     } finally {

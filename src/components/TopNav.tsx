@@ -17,9 +17,20 @@ export default function TopNav() {
   async function handleImportFile(file: File) {
     try {
       const data = parseBackup(await file.text())
-      if (!confirm('匯入會以備份檔內容「取代」目前所有資料，確定繼續？')) return
-      await importAll(data, 'replace')
-      flash('匯入完成')
+      if (
+        confirm(
+          '要以「合併」方式匯入嗎？\n合併＝保留本機資料、同 id 以備份為準；本機已刪除但備份仍有的資料會被加回。\n（按「取消」改問是否「取代」）',
+        )
+      ) {
+        await importAll(data, 'merge')
+        flash('匯入完成（合併）')
+        return
+      }
+      if (confirm('改以「取代」匯入？將清空本機所有資料、完全以備份內容取代。')) {
+        await importAll(data, 'replace')
+        flash('匯入完成（取代）')
+        return
+      }
     } catch (e) {
       alert('匯入失敗：' + (e as Error).message)
     }
