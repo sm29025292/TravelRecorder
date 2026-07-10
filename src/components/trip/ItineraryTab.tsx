@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { Trip, ItineraryItem } from '../../types'
 import { db } from '../../db/db'
@@ -13,6 +13,7 @@ import {
   hoursBetween,
 } from '../../lib/itinerary'
 import { visitedAttractionIds } from '../../lib/visited'
+import { itineraryToText } from '../../lib/exportItinerary'
 
 export default function ItineraryTab({ trip }: { trip: Trip }) {
   const items = useLiveQuery(
@@ -71,6 +72,18 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
     endDate: trip.endDate,
   })
   const grandSub = itineraryDaySubtotal(list, trip)
+  const [copied, setCopied] = useState(false)
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(
+        itineraryToText(trip, groups, attractions ?? []),
+      )
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      alert('複製失敗，請改用匯出備份')
+    }
+  }
 
   function renderRow(it: ItineraryItem) {
     return (
@@ -251,10 +264,18 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
         >
           + 新增一列
         </button>
-        <div className="ml-auto text-sm text-gray-600">
-          總計 <b className="tabular-nums">{fmt(grandSub.hours)}</b> 小時 ·{' '}
-          {cur} <b className="tabular-nums">{fmt(grandSub.foreign)}</b> · 台幣{' '}
-          <b className="tabular-nums">{fmt(grandSub.twd)}</b>
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          <div className="text-sm text-gray-600">
+            總計 <b className="tabular-nums">{fmt(grandSub.hours)}</b> 小時 ·{' '}
+            {cur} <b className="tabular-nums">{fmt(grandSub.foreign)}</b> · 台幣{' '}
+            <b className="tabular-nums">{fmt(grandSub.twd)}</b>
+          </div>
+          <button
+            onClick={handleCopy}
+            className="rounded border px-2.5 py-1.5 text-sm hover:bg-gray-50"
+          >
+            {copied ? '已複製 ✓' : '複製行程文字'}
+          </button>
         </div>
       </div>
     </div>
