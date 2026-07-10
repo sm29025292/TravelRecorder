@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { newId, now } from '../lib/id'
-import type { Trip } from '../types'
+import type { PackingItem, Trip } from '../types'
 
 export default function TripList() {
   const navigate = useNavigate()
@@ -25,7 +25,22 @@ export default function TripList() {
       createdAt: ts,
       updatedAt: ts,
     }
-    await db.trips.add(trip)
+    await db.transaction('rw', db.trips, db.packing, async () => {
+      const prev = await db.trips.orderBy('updatedAt').last()
+      await db.trips.add(trip)
+      if (prev) {
+        const prevPacking = await db.packing.where('tripId').equals(prev.id).sortBy('sort')
+        if (prevPacking.length > 0) {
+          const cloned: PackingItem[] = prevPacking.map((p) => ({
+            ...p,
+            id: newId(),
+            tripId: trip.id,
+            checked: false,
+          }))
+          await db.packing.bulkAdd(cloned)
+        }
+      }
+    })
     navigate(`/trip/${trip.id}`)
   }
 
