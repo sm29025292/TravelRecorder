@@ -109,7 +109,8 @@
    `read()` 不動（已回傳 `updatedAt`）。
 2. `SyncDialog.tsx`：`LS` 常數表加 `lastSyncedAt: 'tr.sync.lastSyncedAt'`。
    - **每次成功上傳**：以 `write()` 回傳的 `updatedAt` 寫入 localStorage。
-   - **每次成功下載**（merge 或 replace 皆是）：以 `snap.updatedAt` 寫入 localStorage。
+   - **每次成功下載**：以 `snap.updatedAt` 寫入 localStorage
+     （`handleDownload` 的 merge 與 replace **兩個成功分支都要寫**）。
 3. `handleUpload` 流程改為：先 `new GistBackend(token, gistId).read()`：
    - `snap === null`，或 `snap.content.trim()` 為空／為 `'{}'`（`createGist` 的初始 placeholder）
      → 視為雲端無備份，直接上傳、不 confirm。
@@ -118,6 +119,8 @@
      取消 ⇒ 中止（不上傳、不清欄位）。
    - 相同 → 直接上傳。
    - 之後照舊 `exportAll → encryptText → write`，成功後依第 2 點更新 lastSyncedAt。
+   - `read()` 拋錯（網路／HTTP 錯誤）⇒ 顯示錯誤並**中止上傳**——整段放在既有 try/catch 內即自然成立；
+     **不可**改成「讀不到就直接上傳」（那會讓防覆蓋檢查失效）。
 4. 錯誤處理照舊：HTTP 錯誤只回 status、token/passphrase 不進任何訊息。多一次 read API call 可接受。
 
 **不要做**：不做自動合併／三方 merge；不動加密流程與下載的兩段 confirm（T23）；
@@ -153,10 +156,11 @@
      `out === null` → `setText(value)` 恢復原值、**不**呼叫 `onChange`；
      否則 `setText(out)`，且 `out !== value` 才呼叫 `onChange(out)`。
    - `TimeInput` 改為 `type="text"`＋`inputMode="numeric"`＋`placeholder="HH:MM"`＋
-     `normalize={normalizeTimeText}`（`commitOnBlur` 照舊固定 true）。
+     `normalize={normalizeTimeText}`（`commitOnBlur` 照舊固定 true）。固定值寫在 `{...p}` 展開
+     **之後**（後者覆蓋）；`tsc` 若對 `Omit` 型別報錯，把新 prop 名一併加進 `Omit` 清單即可。
      `TextInput`／`DateInput`／`NumberInput` **不動**（日期仍用原生 date picker，與 12/24h 無關）。
-3. 欄寬：`ItineraryTab.tsx` 開始／結束欄 `w-24` → `w-16`；`ExpensesTab.tsx` 時間欄比照縮小
-   （依現有 class 調整）。
+3. 欄寬：`ItineraryTab.tsx` 開始／結束欄（約 L94／L97）`w-24` → `w-16`；
+   `ExpensesTab.tsx` 時間欄（約 L80）`w-24` → `w-16`。
 4. 測試：`itinerary.test.ts` 加 `normalizeTimeText` ≥ 8 條——空字串、`9`→`09:00`、`930`→`09:30`、
    `0930`、`9:30`→`09:30`、`24:00`／`1260`（分超界）→ null、`abc`→ null、已是 `HH:MM` 原樣通過。
 
@@ -173,7 +177,8 @@
 已拍板：全域隱藏。
 
 **規格**：
-1. `src/index.css` 的 `@layer base` 內加：
+1. `src/index.css` **檔尾**（既有 `body` 規則之後）直接加下列規則——此檔目前**沒有** `@layer` 區塊，
+   比照既有 `html, body` 規則的寫法即可、不要自己開 `@layer`：
    ```css
    input[type='number']::-webkit-outer-spin-button,
    input[type='number']::-webkit-inner-spin-button {
@@ -209,13 +214,14 @@
    內部 state（`fType`／`fCity`）、過濾邏輯、optgroup label 自組、「目前選取」保底、
    `visitedIds`、★ 前綴等 **T16 的行為全部不變**，純版面容器改變；
    唯一呼叫者是 `ItineraryTab.tsx`（已確認），Props 介面不動。
-2. `src/components/trip/ItineraryTab.tsx`：
-   - 表頭「景點」一欄改為「類型」「都市」「景點」三欄；`<AttractionPicker …/>` 直接放在
-     `<tr>` 內原景點欄位置（元件自帶三個 `<Td>`）。
-   - 移除「行程／活動」`Th`＋`Td`（含其 `TextInput`）；`addRow` **仍寫入** `activity: ''`
-     （型別必填、備份相容）。
-   - 空狀態 `colSpan` 12 → 13；表格 `min-w-[72rem]` 依新欄寬微調（估 74rem 上下，施工時自量，
-     原則：不出現欄位互擠、也不留大片空白）。
+2. `src/components/trip/ItineraryTab.tsx`（行號以現檔為準，約略位置供快速定位）：
+   - 表頭（`renderHead`，約 L165–184）「景點」一欄改為「類型」「都市」「景點」三欄；
+     `renderRow` 內原景點 `<Td>`（約 L100–109）改為直接放 `<AttractionPicker …/>` 於 `<tr>` 之下
+     （元件自帶三個 `<Td>`；React fragment 是合法的 `<tr>` 子內容）。
+   - 移除「行程／活動」`Th`（約 L173）＋`Td`（約 L110–112，含其 `TextInput`）；
+     `addRow` **仍寫入** `activity: ''`（型別必填、備份相容）。
+   - 空狀態 `colSpan`（約 L194）12 → 13；表格 `min-w-[72rem]`（兩處）依新欄寬微調
+     （估 74rem 上下，施工時自量，原則：不出現欄位互擠、也不留大片空白）。
 3. **不動**：`types.ts`（`activity` 欄位保留）、`exportItinerary.ts`（舊資料 activity 照常輸出，
    新列 activity 恆空自然不輸出）、`orphanItinerary` 健檢面板的 activity 顯示、DB、備份。
 
@@ -240,13 +246,15 @@
      UTC 時區陷阱同 `datesInRange` 注意事項）。
    - 格式不合或 `days` 非整數 → 回傳原字串（含空字串——「未排日期」列不動）。
    - 測試 ≥ 5 條：+N、−N、跨月、跨年、非法輸入原樣返回。
-2. `OverviewTab.tsx`：出發／回程日期區塊旁加「平移日期」按鈕：
+2. `OverviewTab.tsx`：出發／回程日期的 grid 下方加「平移日期」小按鈕（`rounded border` 樣式
+   比照全 App 既有小按鈕）：
    - `prompt('整趟平移天數（正數延後、負數提前）')` → `parseInt`；非有限整數或 0 ⇒ 中止。
    - `confirm` 摘要：新的起訖日期（各以 `shiftDateStr` 預算）＋「將同步平移 N 筆行程列日期
      （花費日期不變）」→ 取消 ⇒ 中止。
    - 確定 ⇒ `db.transaction('rw', db.trips, db.itinerary, ...)`：
      更新 `trip.startDate`／`endDate`（非空者才平移）＋該旅程所有行程列的非空 `date`；
-     trip 的更新比照總覽頁既有 update 慣例同步 `updatedAt`。
+     trip 的更新沿用本檔既有 `update` 慣例（約 L15：
+     `db.trips.update(trip.id, { ...patch, updatedAt: now() })`，`now` 已 import）。
 3. UI 用原生 `prompt`／`confirm`（同 T23 慣例，不做自訂 modal）。
 
 **不要做**：不平移花費列日期（已拍板）；不做跨旅程批次；不做日曆選擇器。
@@ -271,8 +279,9 @@
      灰字「(未選景點)」）＋右側時數／外幣小計；點卡片本體展開／收合（收合狀態存 component
      state，`Set<string>` of id）。
    - 展開後：直向表單列出全部欄位——日期、開始／結束（T27 的 `TimeInput`）、
-     類型／都市／景點三下拉（沿用 T29 後的 AttractionPicker——若其輸出已綁 `<Td>`，
-     抽出內部三個 select 的共用子元件或加 `variant` prop，**過濾邏輯只能有一份**）、
+     類型／都市／景點三下拉（做法**指定**：`AttractionPicker` 加 `variant?: 'cells' | 'stack'` prop，
+     預設 `'cells'`＝T29 的三個 `<Td>`、`ItineraryTab` 表格不用改呼叫；`'stack'`＝直向排列的
+     三個 select 供卡片用。**內部 state／過濾／保底邏輯只有一份**，`variant` 只切換最外層版面容器）、
      時數、交通、花費、備註、連結（含 ↗）、刪除 ✕。欄位元件一律沿用 `cells.tsx`。
 3. 新增列（該日「＋新增」）後自動展開該卡片，方便直接編輯。
 4. 頁尾總計與「複製行程文字」按鈕在手機版照常顯示（既有 flex-wrap 微調即可）。
@@ -320,8 +329,10 @@
 2. `Attractions.tsx` 的 `HealthPanel` 加第二區塊「成員參照」（鏡射既有孤兒行程區塊版型）：
    - 額外 `useLiveQuery` 讀 `db.expenses`／`db.members`（全表，沿 T5 全掃慣例）。
    - 依 `tripId` 分組列出問題列（日期／品項／問題描述，如「付錢者已刪除」「分攤含 2 位已刪成員」）。
-   - 每列「清除參照」按鈕：confirm 後一鍵清該列全部孤兒——
-     `db.expenses.update(id, { payerId: orphanPayer ? '' : 原值, participantIds: 過濾掉孤兒後的陣列 })`。
+   - 每列「清除參照」按鈕：confirm 後一鍵清該列全部孤兒——組 patch 物件：
+     `orphanPayer` 為 true 時加 `payerId: ''`；`orphanParticipantIds` 非空時加
+     `participantIds: 原陣列過濾掉孤兒 id 後的結果`；沒問題的欄位**不要**寫進 patch；
+     最後一次 `db.expenses.update(id, patch)`。
      confirm 訊息需提醒：「清除後若分攤名單變為空，該列改為**全體均分**；付錢者清空後該列**不列入結算**。」
    - 無問題時顯示「無成員孤兒參照，資料一致。」
 3. **凍結區解凍範圍（僅此）**：讀 `db.members`、寫 `db.expenses` 的 `payerId`／`participantIds`。
