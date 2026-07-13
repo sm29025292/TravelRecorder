@@ -36,7 +36,7 @@ export async function exportAll(): Promise<BackupData> {
   ])
   return {
     app: 'travel-recorder',
-    version: 4,
+    version: 5,
     exportedAt: new Date().toISOString(),
     trips,
     attractions,
