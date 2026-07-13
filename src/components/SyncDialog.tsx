@@ -246,7 +246,7 @@ export default function SyncDialog({ onClose, setMsg }: Props) {
             disabled={busy}
             className="rounded border border-sky-600 px-3 py-2 text-sm font-medium text-sky-700 hover:bg-sky-50 disabled:opacity-50"
           >
-            下載（Gist→取代本機）
+            下載（Gist→本機）
           </button>
         </div>
 
