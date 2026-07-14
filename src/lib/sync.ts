@@ -23,7 +23,7 @@ export interface CloudSnapshot {
 
 export interface SyncBackend {
   read(): Promise<CloudSnapshot | null>
-  write(content: string): Promise<void>
+  write(content: string): Promise<{ updatedAt: string }>
 }
 
 function authHeaders(token: string): Record<string, string> {
@@ -66,13 +66,15 @@ export class GistBackend implements SyncBackend {
     return { content, updatedAt: body.updated_at ?? '' }
   }
 
-  async write(content: string): Promise<void> {
+  async write(content: string): Promise<{ updatedAt: string }> {
     const res = await this.fetchImpl(`${API_BASE}/gists/${this.gistId}`, {
       method: 'PATCH',
       headers: { ...authHeaders(this.token), 'Content-Type': 'application/json' },
       body: JSON.stringify({ files: { [FILENAME]: { content } } }),
     })
     if (!res.ok) throw new Error(`寫入 Gist 失敗（HTTP ${res.status}）`)
+    const body = (await res.json()) as GistResponse
+    return { updatedAt: body.updated_at ?? '' }
   }
 }
 
