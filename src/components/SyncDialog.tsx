@@ -9,6 +9,7 @@ const LS = {
   gistId: 'tr.sync.gistId',
   remember: 'tr.sync.rememberPassphrase',
   passphrase: 'tr.sync.passphrase',
+  lastSyncedAt: 'tr.sync.lastSyncedAt',
 }
 
 const inputCls =
@@ -89,9 +90,31 @@ export default function SyncDialog({ onClose, setMsg }: Props) {
     if (!require(!!passphrase, '請輸入密語（加密用）')) return
     setBusy(true)
     try {
+      const backend = new GistBackend(token, gistId)
+      const snap = await backend.read()
+      const trimmed = snap?.content.trim() ?? ''
+      const cloudEmpty = snap === null || trimmed === '' || trimmed === '{}'
+      if (!cloudEmpty && snap) {
+        const lastSyncedAt = localStorage.getItem(LS.lastSyncedAt) ?? ''
+        if (snap.updatedAt !== lastSyncedAt) {
+          const cloudStr = snap.updatedAt
+            ? new Date(snap.updatedAt).toLocaleString()
+            : '（未知）'
+          const localStr = lastSyncedAt
+            ? new Date(lastSyncedAt).toLocaleString()
+            : '（無紀錄）'
+          if (
+            !confirm(
+              `雲端備份最後更新：${cloudStr}\n本裝置上次同步：${localStr}\n\n雲端內容可能來自其他裝置，直接上傳將覆蓋它。仍要上傳？`,
+            )
+          )
+            return
+        }
+      }
       const data = await exportAll()
       const cipher = await encryptText(JSON.stringify(data), passphrase)
-      await new GistBackend(token, gistId).write(cipher)
+      const result = await backend.write(cipher)
+      localStorage.setItem(LS.lastSyncedAt, result.updatedAt)
       setMsg('已上傳加密備份 ' + new Date().toLocaleTimeString())
     } catch (e) {
       setErr((e as Error).message)
@@ -124,6 +147,7 @@ export default function SyncDialog({ onClose, setMsg }: Props) {
         )
       ) {
         await importAll(data, 'merge')
+        localStorage.setItem(LS.lastSyncedAt, snap.updatedAt)
         setMsg('已從雲端還原備份（合併）')
         return
       }
@@ -133,6 +157,7 @@ export default function SyncDialog({ onClose, setMsg }: Props) {
         )
       ) {
         await importAll(data, 'replace')
+        localStorage.setItem(LS.lastSyncedAt, snap.updatedAt)
         setMsg('已從雲端還原備份（取代）')
         return
       }
