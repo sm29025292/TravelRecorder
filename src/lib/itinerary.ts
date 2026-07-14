@@ -10,6 +10,38 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^\d{2}:\d{2}$/
 
 /**
+ * 將使用者輸入正規化為 24 小時制 `HH:MM`（見 TimeInput）。
+ * 接受：`''`（清空）、`H`／`HH`（整點，補 `:00`）、`Hmm`／`HHmm`（三／四位純數字）、
+ * `H:MM`／`HH:MM`（時補零）。時 0–23、分 0–59；不符任一格式或超界回 `null`。
+ * 非 null 回傳值一定是 `''` 或 `HH:MM`，與 groupItineraryByDate 的字串序排序及 hoursBetween
+ * 的 `^\d{2}:\d{2}$` 假設相容。
+ */
+export function normalizeTimeText(raw: string): string | null {
+  const s = raw.trim()
+  if (s === '') return ''
+  let h: number
+  let m: number
+  if (/^\d{1,2}$/.test(s)) {
+    h = Number(s)
+    m = 0
+  } else if (/^\d{3}$/.test(s)) {
+    h = Number(s.slice(0, 1))
+    m = Number(s.slice(1))
+  } else if (/^\d{4}$/.test(s)) {
+    h = Number(s.slice(0, 2))
+    m = Number(s.slice(2))
+  } else if (/^\d{1,2}:\d{2}$/.test(s)) {
+    const [hs, ms] = s.split(':')
+    h = Number(hs)
+    m = Number(ms)
+  } else {
+    return null
+  }
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+/**
  * 計算開始→結束的小時數（例：09:00→12:30 = 3.5）。
  * 兩者皆為 `HH:MM` 且 `end > start`（字串比較，同格式下等同時間序）→ 回傳
  * `round(hours, 2)`；其餘（含跨夜 `end <= start`、任一空、格式不合）→ `null`。

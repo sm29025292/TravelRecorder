@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { normalizeTimeText } from '../lib/itinerary'
 
 const base =
   'w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
@@ -15,6 +16,10 @@ type TextLikeProps = {
   // commitOnBlur：輸入過程只更新內部 state，離開欄位（blur）才呼叫父層 onChange。
   // 用於 TimeInput／DateInput：避免每擊鍵就寫入 DB → useLiveQuery 回流重排 → 輸入框失焦吃字。
   commitOnBlur?: boolean
+  // normalize：commitOnBlur 模式下 blur 時先呼叫；回 null 代表無法解析、恢復原值不寫回；
+  // 回字串代表正規化後的合法值。
+  normalize?: (raw: string) => string | null
+  inputMode?: 'numeric'
 }
 
 function TextLike({
@@ -25,6 +30,8 @@ function TextLike({
   className = '',
   list,
   commitOnBlur = false,
+  normalize,
+  inputMode,
 }: TextLikeProps) {
   const [text, setText] = useState(value)
   const [focused, setFocused] = useState(false)
@@ -38,10 +45,22 @@ function TextLike({
       className={`${base} ${className}`}
       value={text}
       list={list}
+      inputMode={inputMode}
       onFocus={() => setFocused(true)}
       onBlur={() => {
         setFocused(false)
-        if (commitOnBlur && text !== value) onChange(text)
+        if (!commitOnBlur) return
+        if (normalize) {
+          const out = normalize(text)
+          if (out === null) {
+            setText(value)
+            return
+          }
+          setText(out)
+          if (out !== value) onChange(out)
+        } else if (text !== value) {
+          onChange(text)
+        }
       }}
       onChange={(e) => {
         setText(e.target.value)
@@ -54,11 +73,22 @@ function TextLike({
 export function TextInput(p: Omit<TextLikeProps, 'type'>) {
   return <TextLike {...p} type="text" />
 }
-export function DateInput(p: Omit<TextLikeProps, 'type' | 'commitOnBlur'>) {
+export function DateInput(p: Omit<TextLikeProps, 'type' | 'commitOnBlur' | 'normalize' | 'inputMode'>) {
   return <TextLike {...p} type="date" commitOnBlur />
 }
-export function TimeInput(p: Omit<TextLikeProps, 'type' | 'commitOnBlur'>) {
-  return <TextLike {...p} type="time" commitOnBlur />
+export function TimeInput(
+  p: Omit<TextLikeProps, 'type' | 'commitOnBlur' | 'normalize' | 'inputMode' | 'placeholder'>,
+) {
+  return (
+    <TextLike
+      {...p}
+      type="text"
+      inputMode="numeric"
+      placeholder="HH:MM"
+      commitOnBlur
+      normalize={normalizeTimeText}
+    />
+  )
 }
 
 type NumberProps = {
