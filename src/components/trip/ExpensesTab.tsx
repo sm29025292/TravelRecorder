@@ -77,7 +77,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
                 <Td className="w-32">
                   <DateInput value={it.date} onChange={(v) => update(it.id, { date: v })} />
                 </Td>
-                <Td className="w-24">
+                <Td className="w-16">
                   <TimeInput value={it.time} onChange={(v) => update(it.id, { time: v })} />
                 </Td>
                 <Td className="min-w-[8rem]">

@@ -5,6 +5,7 @@ import {
   itineraryDaySubtotal,
   datesInRange,
   hoursBetween,
+  normalizeTimeText,
 } from './itinerary'
 import { itineraryTotal } from './money'
 import type { ItineraryItem, Trip } from '../types'
@@ -222,6 +223,57 @@ describe('hoursBetween', () => {
     expect(hoursBetween('', '12:00')).toBeNull()
     expect(hoursBetween('09:00', '')).toBeNull()
     expect(hoursBetween('09-00', '12:00')).toBeNull()
+  })
+})
+
+describe('normalizeTimeText', () => {
+  it('空字串（trim 後）合法回空字串', () => {
+    expect(normalizeTimeText('')).toBe('')
+    expect(normalizeTimeText('   ')).toBe('')
+  })
+  it('單/雙位純數字視為整點', () => {
+    expect(normalizeTimeText('9')).toBe('09:00')
+    expect(normalizeTimeText('09')).toBe('09:00')
+    expect(normalizeTimeText('14')).toBe('14:00')
+    expect(normalizeTimeText('0')).toBe('00:00')
+    expect(normalizeTimeText('23')).toBe('23:00')
+  })
+  it('三位純數字：首位為時、後兩位為分', () => {
+    expect(normalizeTimeText('930')).toBe('09:30')
+    expect(normalizeTimeText('905')).toBe('09:05')
+  })
+  it('四位純數字：前兩位時、後兩位分', () => {
+    expect(normalizeTimeText('0930')).toBe('09:30')
+    expect(normalizeTimeText('1745')).toBe('17:45')
+    expect(normalizeTimeText('0000')).toBe('00:00')
+    expect(normalizeTimeText('2359')).toBe('23:59')
+  })
+  it('H:MM／HH:MM 時補零', () => {
+    expect(normalizeTimeText('9:30')).toBe('09:30')
+    expect(normalizeTimeText('09:30')).toBe('09:30')
+    expect(normalizeTimeText('23:59')).toBe('23:59')
+  })
+  it('已是合法 HH:MM 原樣通過', () => {
+    expect(normalizeTimeText('00:00')).toBe('00:00')
+    expect(normalizeTimeText('12:34')).toBe('12:34')
+  })
+  it('時或分超界回 null', () => {
+    expect(normalizeTimeText('24')).toBeNull()
+    expect(normalizeTimeText('24:00')).toBeNull()
+    expect(normalizeTimeText('1260')).toBeNull()
+    expect(normalizeTimeText('9:60')).toBeNull()
+    expect(normalizeTimeText('99')).toBeNull()
+  })
+  it('非數字或格式不合回 null', () => {
+    expect(normalizeTimeText('abc')).toBeNull()
+    expect(normalizeTimeText('9:3')).toBeNull()
+    expect(normalizeTimeText('12345')).toBeNull()
+    expect(normalizeTimeText('9-30')).toBeNull()
+    expect(normalizeTimeText('9:30p')).toBeNull()
+  })
+  it('前後空白會 trim', () => {
+    expect(normalizeTimeText(' 09:30 ')).toBe('09:30')
+    expect(normalizeTimeText('  930')).toBe('09:30')
   })
 })
 

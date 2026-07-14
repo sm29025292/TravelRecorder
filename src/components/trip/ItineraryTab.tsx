@@ -91,10 +91,10 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
         <Td className="w-32">
           <DateInput value={it.date} onChange={(v) => update(it.id, { date: v })} />
         </Td>
-        <Td className="w-24">
+        <Td className="w-16">
           <TimeInput value={it.time} onChange={(v) => updateStart(it, v)} />
         </Td>
-        <Td className="w-24">
+        <Td className="w-16">
           <TimeInput value={it.endTime ?? ''} onChange={(v) => updateEnd(it, v)} />
         </Td>
         <Td>
