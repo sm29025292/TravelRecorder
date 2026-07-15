@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { Trip, ItineraryItem } from '../../types'
 import { db } from '../../db/db'
@@ -27,6 +27,16 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
     [allItinerary],
   )
 
+  // 手機卡片預設收合；新增列後自動展開該卡片。
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const toggleExpand = (id: string) =>
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
   async function addRow(prefillDate = '') {
     const list = items ?? []
     const sort = (list.length ? list[list.length - 1].sort : 0) + 1
@@ -49,6 +59,11 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
       sort,
     }
     await db.itinerary.add(row)
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      next.add(row.id)
+      return next
+    })
   }
 
   const update = (id: string, patch: Partial<ItineraryItem>) => db.itinerary.update(id, patch)
@@ -83,6 +98,20 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
     } catch {
       alert('複製失敗，請改用匯出備份')
     }
+  }
+
+  function attractionName(id: string): string | null {
+    if (!id) return null
+    const a = (attractions ?? []).find((x) => x.id === id)
+    return a?.name ?? '(景點已刪除)'
+  }
+
+  function timeSummary(it: ItineraryItem): { text: string; muted: boolean } {
+    const s = it.time
+    const e = it.endTime ?? ''
+    if (!s && !e) return { text: '--:--', muted: true }
+    if (s && e) return { text: `${s}–${e}`, muted: false }
+    return { text: s || e, muted: false }
   }
 
   function renderRow(it: ItineraryItem) {
@@ -179,20 +208,143 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
     )
   }
 
+  function renderCard(it: ItineraryItem) {
+    const expanded = expandedIds.has(it.id)
+    const name = attractionName(it.attractionId)
+    const t = timeSummary(it)
+    const foreign = itineraryForeignSubtotal(it)
+    return (
+      <div key={it.id}>
+        <button
+          type="button"
+          onClick={() => toggleExpand(it.id)}
+          aria-expanded={expanded}
+          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+        >
+          <span
+            className={`shrink-0 tabular-nums ${t.muted ? 'text-gray-400' : 'text-gray-600'}`}
+          >
+            {t.text}
+          </span>
+          <span className="flex-1 truncate">
+            {name === null ? (
+              <span className="text-gray-400">(未選景點)</span>
+            ) : (
+              name
+            )}
+          </span>
+          <span className="shrink-0 text-right text-xs tabular-nums text-gray-500">
+            {it.hours ? `${fmt(it.hours)} h` : ''}
+            {it.hours && foreign ? ' · ' : ''}
+            {foreign ? `${cur} ${fmt(foreign)}` : ''}
+          </span>
+          <span className="shrink-0 text-xs text-gray-400">{expanded ? '▲' : '▼'}</span>
+        </button>
+        {expanded && (
+          <div className="space-y-2 border-t bg-gray-50/50 px-3 py-3">
+            <CardField label="日期">
+              <DateInput value={it.date} onChange={(v) => update(it.id, { date: v })} />
+            </CardField>
+            <div className="grid grid-cols-2 gap-2">
+              <CardField label="開始">
+                <TimeInput value={it.time} onChange={(v) => updateStart(it, v)} />
+              </CardField>
+              <CardField label="結束">
+                <TimeInput
+                  value={it.endTime ?? ''}
+                  onChange={(v) => updateEnd(it, v)}
+                />
+              </CardField>
+            </div>
+            <AttractionPicker
+              attractions={attractions ?? []}
+              value={it.attractionId}
+              onChange={(id) => update(it.id, { attractionId: id })}
+              country={trip.country ?? ''}
+              defaultCity={trip.city ?? ''}
+              visitedIds={visitedIds}
+              variant="stack"
+            />
+            <CardField label="時數">
+              <NumberInput value={it.hours} onChange={(n) => update(it.id, { hours: n })} />
+            </CardField>
+            <div className="grid grid-cols-2 gap-2">
+              <CardField label={`交通(${cur})`}>
+                <NumberInput
+                  value={it.transportCost}
+                  onChange={(n) => update(it.id, { transportCost: n })}
+                />
+              </CardField>
+              <CardField label={`花費(${cur})`}>
+                <NumberInput
+                  value={it.activityCost}
+                  onChange={(n) => update(it.id, { activityCost: n })}
+                />
+              </CardField>
+            </div>
+            <div className="text-right text-xs text-gray-600">
+              小計 {cur}{' '}
+              <b className="tabular-nums text-sm text-gray-800">{fmt(foreign)}</b>
+              <span className="ml-2 text-gray-400">
+                （台幣 {fmt(itinerarySubtotal(it, trip))}）
+              </span>
+            </div>
+            <CardField label="備註">
+              <TextInput value={it.notes} onChange={(v) => update(it.id, { notes: v })} />
+            </CardField>
+            <CardField label="連結">
+              <div className="flex items-center gap-1">
+                <TextInput
+                  value={it.link}
+                  placeholder="https://"
+                  onChange={(v) => update(it.id, { link: v })}
+                />
+                {it.link.trim() && (
+                  <button
+                    type="button"
+                    title="開啟連結"
+                    onClick={() => window.open(it.link, '_blank', 'noopener')}
+                    className="shrink-0 rounded px-1.5 py-1 text-xs text-gray-500 hover:bg-sky-50 hover:text-sky-700"
+                  >
+                    ↗
+                  </button>
+                )}
+              </div>
+            </CardField>
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => remove(it.id)}
+                className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+              >
+                ✕ 刪除這列
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3">
       {groups.length === 0 ? (
-        <div className="overflow-x-auto rounded-lg border bg-white">
-          <table className="w-full min-w-[74rem] text-sm">
-            {renderHead()}
-            <tbody>
-              <tr>
-                <td colSpan={13} className="p-6 text-center text-gray-400">
-                  尚無行程，點下方「新增一列」。先到「景點庫」加景點，這裡的「景點」欄就能下拉選取。
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="rounded-lg border bg-white">
+          <div className="hidden overflow-x-auto sm:block">
+            <table className="w-full min-w-[74rem] text-sm">
+              {renderHead()}
+              <tbody>
+                <tr>
+                  <td colSpan={13} className="p-6 text-center text-gray-400">
+                    尚無行程，點下方「新增一列」。先到「景點庫」加景點，這裡的「景點」欄就能下拉選取。
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="p-6 text-center text-sm text-gray-400 sm:hidden">
+            尚無行程，點下方「新增一列」。先到「景點庫」加景點，這裡的「景點」欄就能下拉選取。
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -233,11 +385,14 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
                     <b className="tabular-nums">{fmt(sub.twd)}</b>
                   </div>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="hidden overflow-x-auto sm:block">
                   <table className="w-full min-w-[74rem] text-sm">
                     {renderHead()}
                     <tbody>{g.items.map(renderRow)}</tbody>
                   </table>
+                </div>
+                <div className="divide-y sm:hidden">
+                  {g.items.map(renderCard)}
                 </div>
                 <div className="border-t bg-gray-50 px-3 py-2 text-sm">
                   <button
@@ -275,5 +430,14 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
         </div>
       </div>
     </div>
+  )
+}
+
+function CardField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <span className="w-14 shrink-0 text-xs text-gray-500">{label}</span>
+      <span className="flex-1">{children}</span>
+    </label>
   )
 }
