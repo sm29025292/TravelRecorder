@@ -3,7 +3,14 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../db/db'
 import { newId } from '../lib/id'
-import { ATTRACTION_TYPES, type Attraction, type ItineraryItem, type Trip } from '../types'
+import {
+  ATTRACTION_TYPES,
+  type Attraction,
+  type ExpenseItem,
+  type ItineraryItem,
+  type Member,
+  type Trip,
+} from '../types'
 import { TextInput, IconButton, Th, Td, Select } from '../components/cells'
 import {
   buildLocationTree,
@@ -16,6 +23,7 @@ import {
 import { importAttractionsFromCSV } from '../lib/importAttractions'
 import { applyMerge, findDuplicateGroups } from '../lib/dedupeAttractions'
 import { findOrphanItinerary } from '../lib/orphanItinerary'
+import { findOrphanMemberRefs, type OrphanMemberRef } from '../lib/orphanMembers'
 import { visitedAttractionIds } from '../lib/visited'
 
 const inputCls =
@@ -106,6 +114,8 @@ export default function Attractions() {
   const attractions = useLiveQuery(() => db.attractions.toArray(), [], [])
   const trips = useLiveQuery(() => db.trips.toArray(), [], [])
   const itinerary = useLiveQuery(() => db.itinerary.toArray(), [], [])
+  const expenses = useLiveQuery(() => db.expenses.toArray(), [], [])
+  const members = useLiveQuery(() => db.members.toArray(), [], [])
   const [newCountry, setNewCountry] = useState('')
   const [newCity, setNewCity] = useState('')
   const [newDistrict, setNewDistrict] = useState('')
@@ -701,6 +711,8 @@ export default function Attractions() {
           itinerary={itinerary ?? []}
           attractions={allAttractions}
           trips={trips ?? []}
+          expenses={expenses ?? []}
+          members={members ?? []}
           onClose={() => setHealthOpen(false)}
           setMsg={setMsg}
         />
@@ -985,12 +997,16 @@ function HealthPanel({
   itinerary,
   attractions,
   trips,
+  expenses,
+  members,
   onClose,
   setMsg,
 }: {
   itinerary: ItineraryItem[]
   attractions: Attraction[]
   trips: Trip[]
+  expenses: ExpenseItem[]
+  members: Member[]
   onClose: () => void
   setMsg: (s: string) => void
 }) {
@@ -998,6 +1014,10 @@ function HealthPanel({
   const orphans = useMemo(
     () => findOrphanItinerary(itinerary, attractions),
     [itinerary, attractions],
+  )
+  const memberOrphans = useMemo(
+    () => findOrphanMemberRefs(expenses, members),
+    [expenses, members],
   )
   const tripById = useMemo(() => {
     const m = new Map<string, Trip>()
@@ -1016,6 +1036,16 @@ function HealthPanel({
     return [...m.entries()]
   }, [orphans])
 
+  const memberGrouped = useMemo(() => {
+    const m = new Map<string, OrphanMemberRef[]>()
+    for (const r of memberOrphans) {
+      const list = m.get(r.expense.tripId)
+      if (list) list.push(r)
+      else m.set(r.expense.tripId, [r])
+    }
+    return [...m.entries()]
+  }, [memberOrphans])
+
   async function clearRef(row: ItineraryItem) {
     const ok = window.confirm('清除此列的景點參照？該行程列會回到「未指定景點」。')
     if (!ok) return
@@ -1028,9 +1058,37 @@ function HealthPanel({
     }
   }
 
+  async function clearMemberRef(ref: OrphanMemberRef) {
+    const ok = window.confirm(
+      '清除此列的成員孤兒參照？\n\n清除後若分攤名單變為空，該列改為全體均分；付錢者清空後該列不列入結算。',
+    )
+    if (!ok) return
+    try {
+      const patch: Partial<ExpenseItem> = {}
+      if (ref.orphanPayer) patch.payerId = ''
+      if (ref.orphanParticipantIds.length > 0) {
+        const ghostSet = new Set(ref.orphanParticipantIds)
+        patch.participantIds = (ref.expense.participantIds ?? []).filter((id) => !ghostSet.has(id))
+      }
+      await db.expenses.update(ref.expense.id, patch)
+      setMsg('已清除 1 筆成員孤兒參照')
+      setTimeout(() => setMsg(''), 6000)
+    } catch (e) {
+      setMsg('清除失敗：' + (e as Error).message)
+    }
+  }
+
   function goTrip(tripId: string) {
     navigate(`/trip/${tripId}`)
     onClose()
+  }
+
+  function describeMemberOrphan(ref: OrphanMemberRef): string {
+    const parts: string[] = []
+    if (ref.orphanPayer) parts.push('付錢者已刪除')
+    if (ref.orphanParticipantIds.length > 0)
+      parts.push(`分攤含 ${ref.orphanParticipantIds.length} 位已刪成員`)
+    return parts.join('・')
   }
 
   return (
@@ -1044,9 +1102,6 @@ function HealthPanel({
       >
         <div className="flex items-center gap-2">
           <h2 className="text-base font-semibold">孤兒參照健檢</h2>
-          <span className="text-xs text-gray-500">
-            掃描 attractionId 非空、卻在景點庫找不到對應景點的行程列
-          </span>
           <button
             type="button"
             onClick={onClose}
@@ -1056,66 +1111,145 @@ function HealthPanel({
           </button>
         </div>
 
-        {orphans.length === 0 ? (
-          <p className="mt-4 rounded border border-dashed p-6 text-center text-sm text-gray-500">
-            無孤兒行程列，資料一致。
-          </p>
-        ) : (
-          <div className="mt-3 space-y-4">
-            {grouped.map(([tripId, rows]) => {
-              const trip = tripById.get(tripId)
-              const hasTrip = !!trip
-              return (
-                <div key={tripId || '(no-trip)'} className="rounded-lg border">
-                  <div className="flex items-center gap-2 border-b bg-gray-50 px-3 py-1.5 text-xs">
-                    <span className="font-medium text-gray-700">
-                      {hasTrip ? trip!.name || '(未命名旅程)' : '找不到旅程'}
-                    </span>
-                    <span className="text-gray-500">
-                      {hasTrip ? `共 ${rows.length} 筆` : `${tripId} · ${rows.length} 筆`}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => goTrip(tripId)}
-                      disabled={!hasTrip}
-                      className="ml-auto rounded border px-2 py-0.5 text-xs enabled:hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-300"
-                      title={hasTrip ? '前往該旅程' : '旅程不存在，無法前往'}
-                    >
-                      前往旅程 ↗
-                    </button>
-                  </div>
-                  <div className="divide-y">
-                    {rows.map((r) => (
-                      <div
-                        key={r.id}
-                        className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm"
-                      >
-                        <span className="text-gray-500">{r.date || '未排日期'}</span>
-                        {r.time && <span className="text-gray-500">{r.time}</span>}
-                        <span className="min-w-0 flex-1">
-                          {r.activity || <span className="text-gray-300">(未填活動)</span>}
-                        </span>
-                        <span
-                          className="text-xs text-gray-400"
-                          title={`原參照 attractionId：${r.attractionId}`}
-                        >
-                          #{r.attractionId.slice(0, 8)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => clearRef(r)}
-                          className="rounded border px-2 py-1 text-xs hover:bg-gray-100"
-                        >
-                          清除參照
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
+        {/* 區塊 1：行程 → 景點孤兒 */}
+        <div className="mt-4">
+          <div className="mb-2 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-700">行程景點</h3>
+            <span className="text-xs text-gray-500">
+              掃描 attractionId 非空、卻在景點庫找不到對應景點的行程列
+            </span>
           </div>
-        )}
+          {orphans.length === 0 ? (
+            <p className="rounded border border-dashed p-6 text-center text-sm text-gray-500">
+              無孤兒行程列，資料一致。
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {grouped.map(([tripId, rows]) => {
+                const trip = tripById.get(tripId)
+                const hasTrip = !!trip
+                return (
+                  <div key={tripId || '(no-trip)'} className="rounded-lg border">
+                    <div className="flex items-center gap-2 border-b bg-gray-50 px-3 py-1.5 text-xs">
+                      <span className="font-medium text-gray-700">
+                        {hasTrip ? trip!.name || '(未命名旅程)' : '找不到旅程'}
+                      </span>
+                      <span className="text-gray-500">
+                        {hasTrip ? `共 ${rows.length} 筆` : `${tripId} · ${rows.length} 筆`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => goTrip(tripId)}
+                        disabled={!hasTrip}
+                        className="ml-auto rounded border px-2 py-0.5 text-xs enabled:hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-300"
+                        title={hasTrip ? '前往該旅程' : '旅程不存在，無法前往'}
+                      >
+                        前往旅程 ↗
+                      </button>
+                    </div>
+                    <div className="divide-y">
+                      {rows.map((r) => (
+                        <div
+                          key={r.id}
+                          className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm"
+                        >
+                          <span className="text-gray-500">{r.date || '未排日期'}</span>
+                          {r.time && <span className="text-gray-500">{r.time}</span>}
+                          <span className="min-w-0 flex-1">
+                            {r.activity || <span className="text-gray-300">(未填活動)</span>}
+                          </span>
+                          <span
+                            className="text-xs text-gray-400"
+                            title={`原參照 attractionId：${r.attractionId}`}
+                          >
+                            #{r.attractionId.slice(0, 8)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => clearRef(r)}
+                            className="rounded border px-2 py-1 text-xs hover:bg-gray-100"
+                          >
+                            清除參照
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 區塊 2：花費 → 成員孤兒 */}
+        <div className="mt-6">
+          <div className="mb-2 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-700">成員參照</h3>
+            <span className="text-xs text-gray-500">
+              掃描花費列的 payerId／participantIds 指向已不存在成員的情況
+            </span>
+          </div>
+          {memberOrphans.length === 0 ? (
+            <p className="rounded border border-dashed p-6 text-center text-sm text-gray-500">
+              無成員孤兒參照，資料一致。
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {memberGrouped.map(([tripId, refs]) => {
+                const trip = tripById.get(tripId)
+                const hasTrip = !!trip
+                return (
+                  <div key={tripId || '(no-trip)'} className="rounded-lg border">
+                    <div className="flex items-center gap-2 border-b bg-gray-50 px-3 py-1.5 text-xs">
+                      <span className="font-medium text-gray-700">
+                        {hasTrip ? trip!.name || '(未命名旅程)' : '找不到旅程'}
+                      </span>
+                      <span className="text-gray-500">
+                        {hasTrip ? `共 ${refs.length} 筆` : `${tripId} · ${refs.length} 筆`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => goTrip(tripId)}
+                        disabled={!hasTrip}
+                        className="ml-auto rounded border px-2 py-0.5 text-xs enabled:hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-300"
+                        title={hasTrip ? '前往該旅程' : '旅程不存在，無法前往'}
+                      >
+                        前往旅程 ↗
+                      </button>
+                    </div>
+                    <div className="divide-y">
+                      {refs.map((ref) => (
+                        <div
+                          key={ref.expense.id}
+                          className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm"
+                        >
+                          <span className="text-gray-500">
+                            {ref.expense.date || '未排日期'}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            {ref.expense.item || (
+                              <span className="text-gray-300">(未填品項)</span>
+                            )}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {describeMemberOrphan(ref)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => clearMemberRef(ref)}
+                            className="rounded border px-2 py-1 text-xs hover:bg-gray-100"
+                          >
+                            清除參照
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
