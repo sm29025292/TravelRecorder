@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { ATTRACTION_TYPES, type Attraction } from '../types'
-import { Select } from './cells'
+import { Select, Td } from './cells'
 import { groupByLocation, getLocationOptions, type LocationGroup } from '../lib/group'
 
 /**
- * 行程頁的景點下拉：三段式（類型 → 都市 → 景點）。
+ * 行程頁景點三段式（類型 → 都市 → 景點），輸出三個 <Td> 作為表格橫向的獨立欄位。
  * 國家由 `country` prop 完全鎖死；未分類（country 為空）的景點在此不可選——
  * 需先到景點庫用「未分類」節點批次補國家（刻意的工作流）。
  */
@@ -72,13 +72,9 @@ export default function AttractionPicker({
   }
 
   return (
-    <div className="space-y-1">
-      <div className="flex gap-1">
-        <Select
-          value={fType}
-          onChange={(v) => setFType(v as Attraction['type'])}
-          className="w-20 text-xs py-0.5"
-        >
+    <>
+      <Td className="w-20">
+        <Select value={fType} onChange={(v) => setFType(v as Attraction['type'])}>
           <option value="">全部</option>
           {ATTRACTION_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
@@ -86,7 +82,9 @@ export default function AttractionPicker({
             </option>
           ))}
         </Select>
-        <Select value={fCity} onChange={setFCity} className="flex-1 min-w-0 text-xs py-0.5">
+      </Td>
+      <Td className="w-24">
+        <Select value={fCity} onChange={setFCity}>
           <option value="">全部都市</option>
           {cityOptions.map((c) => (
             <option key={c} value={c}>
@@ -94,32 +92,34 @@ export default function AttractionPicker({
             </option>
           ))}
         </Select>
-      </div>
-      <Select value={value} onChange={onChange} className="min-w-[8rem]">
-        <option value="">—</option>
-        {showFallbackSelected && (
-          <optgroup label="目前選取">
-            <option value={value}>
-              {selectedAttraction ? optionText(selectedAttraction, true) : '(景點已刪除)'}
-            </option>
-          </optgroup>
-        )}
-        {countryHasNothing ? (
-          <option value="__nolist__" disabled>
-            景點庫尚無此國家的景點
-          </option>
-        ) : (
-          groups.map((g) => (
-            <optgroup key={g.label} label={groupLabel(g)}>
-              {g.list.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {optionText(a)}
-                </option>
-              ))}
+      </Td>
+      <Td className="min-w-[14rem]">
+        <Select value={value} onChange={onChange}>
+          <option value="">—</option>
+          {showFallbackSelected && (
+            <optgroup label="目前選取">
+              <option value={value}>
+                {selectedAttraction ? optionText(selectedAttraction, true) : '(景點已刪除)'}
+              </option>
             </optgroup>
-          ))
-        )}
-      </Select>
-    </div>
+          )}
+          {countryHasNothing ? (
+            <option value="__nolist__" disabled>
+              景點庫尚無此國家的景點
+            </option>
+          ) : (
+            groups.map((g) => (
+              <optgroup key={g.label} label={groupLabel(g)}>
+                {g.list.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {optionText(a)}
+                  </option>
+                ))}
+              </optgroup>
+            ))
+          )}
+        </Select>
+      </Td>
+    </>
   )
 }

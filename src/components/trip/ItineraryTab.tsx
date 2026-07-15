@@ -97,19 +97,14 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
         <Td className="w-16">
           <TimeInput value={it.endTime ?? ''} onChange={(v) => updateEnd(it, v)} />
         </Td>
-        <Td>
-          <AttractionPicker
-            attractions={attractions ?? []}
-            value={it.attractionId}
-            onChange={(id) => update(it.id, { attractionId: id })}
-            country={trip.country ?? ''}
-            defaultCity={trip.city ?? ''}
-            visitedIds={visitedIds}
-          />
-        </Td>
-        <Td className="min-w-[10rem]">
-          <TextInput value={it.activity} onChange={(v) => update(it.id, { activity: v })} />
-        </Td>
+        <AttractionPicker
+          attractions={attractions ?? []}
+          value={it.attractionId}
+          onChange={(id) => update(it.id, { attractionId: id })}
+          country={trip.country ?? ''}
+          defaultCity={trip.city ?? ''}
+          visitedIds={visitedIds}
+        />
         <Td className="w-20">
           <NumberInput value={it.hours} onChange={(n) => update(it.id, { hours: n })} />
         </Td>
@@ -169,8 +164,9 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           <Th>日期</Th>
           <Th>開始</Th>
           <Th>結束</Th>
+          <Th>類型</Th>
+          <Th>都市</Th>
           <Th>景點</Th>
-          <Th>行程／活動</Th>
           <Th className="text-right">時數</Th>
           <Th className="text-right">交通({cur})</Th>
           <Th className="text-right">花費({cur})</Th>
@@ -187,11 +183,11 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
     <div className="space-y-3">
       {groups.length === 0 ? (
         <div className="overflow-x-auto rounded-lg border bg-white">
-          <table className="w-full min-w-[72rem] text-sm">
+          <table className="w-full min-w-[74rem] text-sm">
             {renderHead()}
             <tbody>
               <tr>
-                <td colSpan={12} className="p-6 text-center text-gray-400">
+                <td colSpan={13} className="p-6 text-center text-gray-400">
                   尚無行程，點下方「新增一列」。先到「景點庫」加景點，這裡的「景點」欄就能下拉選取。
                 </td>
               </tr>
@@ -238,7 +234,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
                   </div>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[72rem] text-sm">
+                  <table className="w-full min-w-[74rem] text-sm">
                     {renderHead()}
                     <tbody>{g.items.map(renderRow)}</tbody>
                   </table>
