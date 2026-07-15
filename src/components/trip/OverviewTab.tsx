@@ -6,6 +6,7 @@ import { now } from '../../lib/id'
 import { TextInput, DateInput, NumberInput } from '../cells'
 import { getLocationOptions, SEP } from '../../lib/group'
 import { COUNTRY_CURRENCY, pickExchangeRate } from '../../lib/currency'
+import { shiftDateStr } from '../../lib/itinerary'
 
 export default function OverviewTab({ trip }: { trip: Trip }) {
   const attractions = useLiveQuery(() => db.attractions.toArray(), [], [])
@@ -23,6 +24,36 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
     : [...new Set(attractions.map((a) => a.city).filter(Boolean))].sort((a, b) =>
         a.localeCompare(b, 'zh-Hant'),
       )
+
+  async function handleShiftDates() {
+    const raw = window.prompt('整趟平移天數（正數延後、負數提前）')
+    if (raw === null) return
+    const days = Number.parseInt(raw, 10)
+    if (!Number.isInteger(days) || days === 0) return
+
+    const items = await db.itinerary.where('tripId').equals(trip.id).toArray()
+    const datedCount = items.filter((it) => !!it.date).length
+
+    const newStart = trip.startDate ? shiftDateStr(trip.startDate, days) : ''
+    const newEnd = trip.endDate ? shiftDateStr(trip.endDate, days) : ''
+    const startLabel = trip.startDate ? `${trip.startDate} → ${newStart}` : '（未設）'
+    const endLabel = trip.endDate ? `${trip.endDate} → ${newEnd}` : '（未設）'
+    const msg = `出發：${startLabel}\n回程：${endLabel}\n\n將同步平移 ${datedCount} 筆行程列日期（花費日期不變）。\n\n確定？`
+    if (!window.confirm(msg)) return
+
+    await db.transaction('rw', db.trips, db.itinerary, async () => {
+      const patch: Partial<Trip> = { updatedAt: now() }
+      if (trip.startDate) patch.startDate = newStart
+      if (trip.endDate) patch.endDate = newEnd
+      await db.trips.update(trip.id, patch)
+      await db.itinerary
+        .where('tripId')
+        .equals(trip.id)
+        .modify((it) => {
+          if (it.date) it.date = shiftDateStr(it.date, days)
+        })
+    })
+  }
 
   function onCountryChange(next: string) {
     const patch: Partial<Trip> = { country: next }
@@ -85,6 +116,18 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
         <Field label="回程日期">
           <DateInput value={trip.endDate} onChange={(v) => update({ endDate: v })} />
         </Field>
+      </div>
+      <div>
+        <button
+          type="button"
+          onClick={handleShiftDates}
+          className="rounded border px-2.5 py-1.5 text-sm hover:bg-gray-50"
+        >
+          平移日期
+        </button>
+        <p className="mt-1 text-xs text-gray-400">
+          機票改期時整趟平移 N 天（trip 起訖＋所有行程列日期；花費日期不動）。
+        </p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label="外幣名稱">

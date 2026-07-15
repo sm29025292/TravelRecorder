@@ -6,6 +6,7 @@ import {
   datesInRange,
   hoursBetween,
   normalizeTimeText,
+  shiftDateStr,
 } from './itinerary'
 import { itineraryTotal } from './money'
 import type { ItineraryItem, Trip } from '../types'
@@ -274,6 +275,44 @@ describe('normalizeTimeText', () => {
   it('前後空白會 trim', () => {
     expect(normalizeTimeText(' 09:30 ')).toBe('09:30')
     expect(normalizeTimeText('  930')).toBe('09:30')
+  })
+})
+
+describe('shiftDateStr', () => {
+  it('正數延後同月', () => {
+    expect(shiftDateStr('2026-07-06', 2)).toBe('2026-07-08')
+  })
+  it('負數提前同月', () => {
+    expect(shiftDateStr('2026-07-06', -3)).toBe('2026-07-03')
+  })
+  it('跨月（+N）', () => {
+    expect(shiftDateStr('2026-07-30', 5)).toBe('2026-08-04')
+  })
+  it('跨月（-N）', () => {
+    expect(shiftDateStr('2026-08-02', -5)).toBe('2026-07-28')
+  })
+  it('跨年（+N）', () => {
+    expect(shiftDateStr('2026-12-30', 5)).toBe('2027-01-04')
+  })
+  it('跨年（-N）', () => {
+    expect(shiftDateStr('2027-01-02', -5)).toBe('2026-12-28')
+  })
+  it('days 為 0 回原字串', () => {
+    expect(shiftDateStr('2026-07-06', 0)).toBe('2026-07-06')
+  })
+  it('格式不合原樣返回', () => {
+    expect(shiftDateStr('2026/07/06', 1)).toBe('2026/07/06')
+    expect(shiftDateStr('', 1)).toBe('')
+    expect(shiftDateStr('abc', 1)).toBe('abc')
+  })
+  it('非法日期原樣返回', () => {
+    expect(shiftDateStr('2026-02-30', 1)).toBe('2026-02-30')
+    expect(shiftDateStr('2026-13-01', 1)).toBe('2026-13-01')
+  })
+  it('非整數 days 原樣返回', () => {
+    expect(shiftDateStr('2026-07-06', 1.5)).toBe('2026-07-06')
+    expect(shiftDateStr('2026-07-06', Number.NaN)).toBe('2026-07-06')
+    expect(shiftDateStr('2026-07-06', Number.POSITIVE_INFINITY)).toBe('2026-07-06')
   })
 })
 

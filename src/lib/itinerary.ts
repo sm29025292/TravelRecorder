@@ -92,6 +92,25 @@ export function datesInRange(startDate: string, endDate: string): string[] {
 }
 
 /**
+ * 將 `YYYY-MM-DD` 日期字串平移 `days` 天（正數延後、負數提前）。
+ * 用本地時區 `new Date(y, m-1, d)` 加減後重新格式化，避免 `new Date('YYYY-MM-DD')`
+ * 被當 UTC 造成時區偏移（同 `datesInRange` 注意事項）。
+ * 格式不合、非整數 `days`、非法日期（如 `2026-02-30`）→ 原字串返回；空字串亦原樣返回（「未排日期」列不動）。
+ */
+export function shiftDateStr(date: string, days: number): string {
+  if (!DATE_RE.test(date)) return date
+  if (!Number.isInteger(days)) return date
+  const [y, m, d] = date.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return date
+  dt.setDate(dt.getDate() + days)
+  const yy = dt.getFullYear()
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+}
+
+/**
  * 依日期分組行程；空 date 歸「未排日期」組並置底。
  * 非空 date 以字串升冪排序（YYYY-MM-DD 字串序＝時間序）；
  * 組內以 `time`（`HH:MM` 字串序）升冪，空 `time` 置底；同 `time` 或皆空以 `sort` 升冪（穩定）。
