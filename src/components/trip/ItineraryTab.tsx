@@ -120,10 +120,10 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
         <Td className="w-32">
           <DateInput value={it.date} onChange={(v) => update(it.id, { date: v })} />
         </Td>
-        <Td className="w-16">
+        <Td className="w-20">
           <TimeInput value={it.time} onChange={(v) => updateStart(it, v)} />
         </Td>
-        <Td className="w-16">
+        <Td className="w-20">
           <TimeInput value={it.endTime ?? ''} onChange={(v) => updateEnd(it, v)} />
         </Td>
         <AttractionPicker
@@ -331,7 +331,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
       {groups.length === 0 ? (
         <div className="rounded-lg border bg-white">
           <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full min-w-[74rem] text-sm">
+            <table className="w-full min-w-[76rem] text-sm">
               {renderHead()}
               <tbody>
                 <tr>
@@ -386,7 +386,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
                   </div>
                 </div>
                 <div className="hidden overflow-x-auto sm:block">
-                  <table className="w-full min-w-[74rem] text-sm">
+                  <table className="w-full min-w-[76rem] text-sm">
                     {renderHead()}
                     <tbody>{g.items.map(renderRow)}</tbody>
                   </table>
