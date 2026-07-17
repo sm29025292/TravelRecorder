@@ -5,6 +5,7 @@ import { db } from '../../db/db'
 import { newId } from '../../lib/id'
 import { TextInput, DateInput, TimeInput, NumberInput, IconButton, Th, Td } from '../cells'
 import AttractionPicker from '../AttractionPicker'
+import LinkField from '../LinkField'
 import { itinerarySubtotal, itineraryForeignSubtotal, fmt } from '../../lib/money'
 import {
   groupItineraryByDate,
@@ -159,23 +160,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           <TextInput value={it.notes} onChange={(v) => update(it.id, { notes: v })} />
         </Td>
         <Td className="w-40">
-          <div className="flex items-center gap-1">
-            <TextInput
-              value={it.link}
-              placeholder="https://"
-              onChange={(v) => update(it.id, { link: v })}
-            />
-            {it.link.trim() && (
-              <button
-                type="button"
-                title="開啟連結"
-                onClick={() => window.open(it.link, '_blank', 'noopener')}
-                className="shrink-0 rounded px-1.5 py-1 text-xs text-gray-500 hover:bg-sky-50 hover:text-sky-700"
-              >
-                ↗
-              </button>
-            )}
-          </div>
+          <LinkField value={it.link} onChange={(v) => update(it.id, { link: v })} />
         </Td>
         <Td>
           <IconButton title="刪除這列" onClick={() => remove(it.id)}>
@@ -293,23 +278,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
               <TextInput value={it.notes} onChange={(v) => update(it.id, { notes: v })} />
             </CardField>
             <CardField label="連結">
-              <div className="flex items-center gap-1">
-                <TextInput
-                  value={it.link}
-                  placeholder="https://"
-                  onChange={(v) => update(it.id, { link: v })}
-                />
-                {it.link.trim() && (
-                  <button
-                    type="button"
-                    title="開啟連結"
-                    onClick={() => window.open(it.link, '_blank', 'noopener')}
-                    className="shrink-0 rounded px-1.5 py-1 text-xs text-gray-500 hover:bg-sky-50 hover:text-sky-700"
-                  >
-                    ↗
-                  </button>
-                )}
-              </div>
+              <LinkField value={it.link} onChange={(v) => update(it.id, { link: v })} />
             </CardField>
             <div className="flex justify-end pt-1">
               <button
