@@ -2,19 +2,21 @@
 
 > 與專案擁有者討論收斂出的開發計畫，拆成自足任務供後續 session 逐項接手
 > （接手者可能是較低階模型，因此每個任務都寫明目標、已拍板的設計決定、涉及檔案、實作步驟與驗收條件，
-> **請勿重新發明設計**；規格沒寫到的細節以 CLAUDE.md 慣例與現有程式風格為準）。
+> 關鍵新程式碼直接附**參考實作**可照抄；**請勿重新發明設計**；
+> 規格沒寫到的細節以 CLAUDE.md 慣例與現有程式風格為準）。
 >
-> **T1–T24 已全部完成**（2026-07-06 ～ 07-10），完整規格已歸檔——完成內容摘要見 **CLAUDE.md §7**，
-> 本檔只保留其進度列。現行任務為 **T25–T33**（2026-07-12 與擁有者第三輪討論定案，
-> 含時間輸入 24 小時制、行程欄位重組、手機卡片式檢視等設計均已拍板）。
+> **T1–T33 已全部完成**（2026-07-06 ～ 07-15），完整規格已歸檔——完成內容摘要見 **CLAUDE.md §7**，
+> 本檔只保留其進度列。現行任務為 **T34–T39**（2026-07-17 與擁有者第四輪討論定案，
+> 含連結超連結化、行程卡片摘要改版、分帳／行李手機卡片等設計均已拍板，
+> 擁有者並已確認過互動示意頁）。
 
 ## 使用方式
 
 1. **開工前必讀 `CLAUDE.md`**（專案架構、慣例、部署眉角都在那）。
 2. 一個 session 建議只做一個任務；先確認「依賴」欄的前置任務已完成。
 3. 完成後：`npm run test` 與 `npm run build` 必須全綠 → 更新本檔進度表（狀態改 ✅ 加日期）→
-   更新 CLAUDE.md §7／§9 → commit（訊息含任務編號，例 `feat(T27): ...`）→ push 到該 session 指定的分支。
-4. 難度 ★★★ 以上的任務建議由較強模型執行，或拆多個 session（先純函式庫、後 UI）。
+   更新 CLAUDE.md §7／§9 → commit（訊息含任務編號，例 `feat(T35): ...`）→ push 到該 session 指定的分支。
+4. 規格附「參考實作」的程式碼**照抄後再依上下文微調 import 路徑即可**，不要改寫邏輯。
 
 ## 進度總覽
 
@@ -46,308 +48,440 @@
 | T22 | 逐日行程匯出文字（複製到剪貼簿） | ✅ 2026-07-10 |
 | T23 | 匯入備份可選「取代／合併」 | ✅ 2026-07-10 |
 | T24 | 分帳成對淨額＋各幣別獨立結算 | ✅ 2026-07-08 |
+| T25 | 同步小修：下載按鈕文字＋備份 version 升 5 | ✅ 2026-07-13 |
+| T26 | Gist 上傳防覆蓋保護 | ✅ 2026-07-14 |
+| T27 | 時間輸入改 24 小時制純文字（失焦正規化） | ✅ 2026-07-14 |
+| T28 | 數字輸入移除上下箭頭（spinner） | ✅ 2026-07-15 |
+| T29 | 行程表欄位重組：移除活動欄＋景點三下拉拆欄 | ✅ 2026-07-15 |
+| T30 | 旅程日期整批平移 | ✅ 2026-07-15 |
+| T31 | 行程頁手機卡片式檢視 | ✅ 2026-07-15 |
+| T32 | 花費頁手機卡片式檢視 | ✅ 2026-07-15 |
+| T33 | 健檢擴充：成員孤兒參照 | ✅ 2026-07-15 |
 
-### 進行中（T25–T33，表列順序＝建議施工順序）
+### 進行中（T34–T39，表列順序＝建議施工順序）
 
 | # | 任務 | 優先 | 難度 | 依賴 | 狀態 |
 |---|------|------|------|------|------|
-| T25 | 同步小修：下載按鈕文字＋備份 version 升 5 | P1 | ★ | 無 | ✅ 2026-07-13 |
-| T26 | Gist 上傳防覆蓋保護 | P1 | ★★ | 建議 T25 後（同檔） | ✅ 2026-07-14 |
-| T27 | 時間輸入改 24 小時制純文字（失焦正規化） | P1 | ★★ | 無 | ✅ 2026-07-14 |
-| T28 | 數字輸入移除上下箭頭（spinner） | P1 | ★ | 無 | ✅ 2026-07-15 |
-| T29 | 行程表欄位重組：移除活動欄＋景點三下拉拆欄 | P1 | ★★ | 建議 T27/T28 後（同檔） | ✅ 2026-07-15 |
-| T30 | 旅程日期整批平移 | P2 | ★★ | 無 | ✅ 2026-07-15 |
-| T31 | 行程頁手機卡片式檢視 | P1 | ★★★ | T29（欄位定案後再做） | ✅ 2026-07-15 |
-| T32 | 花費頁手機卡片式檢視 | P2 | ★★★ | T31（沿用其模式） | ✅ 2026-07-15 |
-| T33 | 健檢擴充：成員孤兒參照 | P3 | ★★ | 無（凍結區局部解凍） | ✅ 2026-07-15 |
+| T34 | 電腦版時間欄寬修正（w-16 → w-20） | P1 | ★ | 無 | ⬜ |
+| T35 | 連結超連結化：`[名稱](網址)` 解析＋LinkField 元件＋行程頁套用 | P1 | ★★ | 建議 T34 後（同檔 ItineraryTab） | ⬜ |
+| T36 | 景點庫網址欄比照 LinkField | P2 | ★ | T35 | ⬜ |
+| T37 | 行程手機卡片摘要改版（金額→備註＋連結） | P1 | ★★ | T35（同檔＋用到連結顯示） | ⬜ |
+| T38 | 分帳頁：同行者手機卡片＋結餘表壓縮＋護照名 placeholder 移除 | P2 | ★★ | 無（凍結區局部解凍） | ⬜ |
+| T39 | 行李頁手機卡片 | P2 | ★★ | 無（凍結區局部解凍） | ⬜ |
 
 ## 共通守則（每個任務都適用）
 
-- **凍結區（局部解凍）**：分帳／成員（`SettlementTab.tsx`、`money.ts` 的 `settle`、`MemberSelect.tsx`、
-  `ParticipantsPicker.tsx`、members 表）與行李（`PackingTab.tsx`）原則上仍凍結，
-  **本輪僅 T33 有明文解凍範圍**（讀 members 表、寫 expenses 的 `payerId`／`participantIds`）——
-  僅限該任務點名的檔案與範圍，不要順手重構或擴充凍結區的其他程式。型別編譯錯誤時做最小修正即可。
+- **凍結區（局部解凍）**：分帳／成員（`SettlementTab.tsx`、`money.ts` 的 `settle`／`settleByCurrency`、
+  `MemberSelect.tsx`、`ParticipantsPicker.tsx`、members 表）與行李（`PackingTab.tsx`）原則上仍凍結。
+  **本輪明文解凍**：T38（`SettlementTab.tsx` 的**版面層**——members 卡片化、結餘表手機壓縮、
+  護照名 placeholder 移除；**不動** `settle`／`settleByCurrency`／expenses 彙整迴圈／`MemberSelect`／
+  `ParticipantsPicker`）與 T39（`PackingTab.tsx` 的**版面層**）。僅限各該任務點名的檔案與範圍，
+  不要順手重構或擴充凍結區的其他程式。
 - 新表單欄位一律沿用 `src/components/cells.tsx` 的聚焦緩衝元件（原因見 CLAUDE.md §6）。
+  **例外**：T35 的 LinkField popover 內兩個輸入框用原生 `<input>`＋local state——
+  它們按「儲存」才寫回 DB、不是「即時寫入」欄位，不需要聚焦緩衝。
 - 可測試的邏輯寫成 `src/lib/` 純函式＋ Vitest 測試；UI 檔案只留組裝與 DB 呼叫。
-- Dexie 目前 schema 版本為 **v5**。**新增「無索引」欄位不需要升版**（Dexie 物件是 schemaless，
-  索引才需要宣告）——T25–T33 **沒有任何任務需要升 Dexie 版本**，也沒有任務新增資料欄位。
+- Dexie 目前 schema 版本為 **v5**。**T34–T39 沒有任何任務需要升 Dexie 版本、也沒有任務新增資料欄位**
+  ——連結沿用既有 `ItineraryItem.link`／`Attraction.url` 字串欄位，只是字串**內容**多一種
+  `[名稱](網址)` 形狀（純網址與空字串照舊合法）。舊備份匯入後純網址照常顯示，零遷移。
+- 手機卡片一律沿用 T31/T32 的既有模式：Tailwind `sm`（640px）斷點雙渲染
+  （桌面表格 `hidden sm:block`、手機卡片 `divide-y sm:hidden`）、`expandedIds: Set<string>`
+  state＋`toggleExpand(id)`、新增列後自動展開、`useLiveQuery`／handlers 兩種檢視**共用不複製**、
+  空狀態雙容器（桌面表格一列＋手機置中文字）、檔尾放 local `CardField` 元件
+  （抄 `ItineraryTab.tsx` 檔尾那個：`w-14` 標籤＋`flex-1` 欄位）。
+- **摘要列若內含可互動元素（連結 `<a>`、勾選框），外層不可用 `<button>`**（HTML 禁止巢狀互動元素，
+  React 會警告且行為不可靠）——改用
+  `<div role="button" tabIndex={0} aria-expanded={expanded} onClick={...} onKeyDown={...}>`，
+  `onKeyDown` 處理 Enter 與空白鍵（空白鍵要 `e.preventDefault()` 防捲動）也觸發展開；
+  內部的 `<a>`／checkbox 在自己的 `onClick` 呼叫 `e.stopPropagation()` 避免同時展開卡片。
+  摘要列**沒有**內部互動元素時（如 T38 成員卡片）維持 `<button>` 即可。
 - 個人資料（真實景點 CSV、護照號碼等）不得進 repo；測試用合成樣本。
 - 純文件 commit 訊息加 `[skip ci]`。
-- 本批任務的設計決定（含取捨原因）都已與擁有者拍板，規格內標明「已拍板」者**不要改成別的做法**。
+- 本批任務的設計決定（含取捨原因）都已與擁有者拍板並經互動示意頁確認，
+  規格內標明「已拍板」者**不要改成別的做法**。
 
 ---
 
-## T25 同步小修：下載按鈕文字＋備份 version 升 5（P1・★・依賴：無）
+## T34 電腦版時間欄寬修正（P1・★・依賴：無）
 
-**背景／目標**：兩個文件性小修——
-1. `SyncDialog.tsx` 的下載按鈕文字「下載（Gist→**取代本機**）」是 T10 時代的殘留：
-   T23 之後下載其實會先問「合併」、取消才問「取代」，按鈕文字與行為不符。
-2. `backup.ts` 的 `exportAll` 仍寫 `version: 4`，但 Dexie schema 已是 v5（T1 購物併入花費）。
-   `importAll` 不檢查版本號所以無實害，但未來若要靠版本判斷格式會踩到。
+**背景／目標**：T27 把時間欄改純文字輸入時欄寬從 `w-24` 縮到 `w-16`（64px），但扣掉
+`Td` 內距（`px-1.5`）、輸入框內距（`px-2`）與邊框後，文字區只剩約 34px，`08:30` 五碼
+被截成「08:」（擁有者截圖確認）。修正：欄寬放寬到 `w-20`（80px，文字區約 50px 夠放五碼）。
 
 **規格**：
-1. `SyncDialog.tsx`（約 L249）：按鈕文字改「下載（Gist→本機）」。
-2. `backup.ts`（約 L39）：`version: 4` 改 `version: 5`。舊備份檔不受影響（`importAll` 依欄位形狀
-   而非版本號做相容判斷，見既有 v2-/v3/v4 正規化邏輯）。
+1. `src/components/trip/ItineraryTab.tsx`：`renderRow` 內「開始」「結束」兩個
+   `<Td className="w-16">`（約 L123、L126）改 `w-20`；表格 `min-w-[74rem]`（**兩處**，
+   約 L334 與 L389）改 `min-w-[76rem]`（兩欄各加 1rem）。
+2. `src/components/trip/ExpensesTab.tsx`：「時間」欄 `<Td className="w-16">`（約 L74）改
+   `w-20`；表格 `min-w-[68rem]`（約 L245）改 `min-w-[69rem]`。
+   **注意**：同檔約 L311 的 `CardField` 標籤 `w-16` 是手機卡片的標籤寬，**不要動**。
+3. 手機卡片內的 `TimeInput`（CardField 版）是 `flex-1` 不受影響，不用改。
 
-**不要做**：不動 `importAll` 邏輯；不加版本檢查。
+**不要做**：不動 `cells.tsx`／`normalizeTimeText`；不改輸入框內距。
 
-**驗收**：`npm run build` 全綠、既有測試全綠；手動：同步對話框按鈕文字正確；
-匯出的 JSON 首段 `version` 為 5、匯入舊檔（version 4）仍正常。
+**驗收**：build 全綠、既有測試全綠；手動（桌面寬度）：行程頁開始／結束、花費頁時間欄
+可完整顯示 `08:30` 五碼不被截斷。
 
 ---
 
-## T26 Gist 上傳防覆蓋保護（P1・★★・依賴：建議 T25 後，同檔 SyncDialog）
+## T35 連結超連結化：`[名稱](網址)` 解析＋LinkField 元件＋行程頁套用（P1・★★・依賴：建議 T34 後，同檔減衝突）
 
-**背景／目標**：上傳目前是「盲寫」——兩台裝置共用同一 Gist 時，B 裝置拿舊資料上傳會直接
-蓋掉 A 剛上傳的新備份，且無任何提示（下載端已有時間戳確認框，上傳端沒有）。
-已拍板（2026-07-12）：上傳前比對雲端變動、必要時 confirm；不做自動合併。
-
-**規格**：
-1. `src/lib/sync.ts`：`SyncBackend.write` 與 `GistBackend.write` 回傳型別由 `Promise<void>` 改
-   `Promise<{ updatedAt: string }>`——PATCH 成功後解析回應 JSON 的 `updated_at`（缺值回 `''`）。
-   `read()` 不動（已回傳 `updatedAt`）。
-2. `SyncDialog.tsx`：`LS` 常數表加 `lastSyncedAt: 'tr.sync.lastSyncedAt'`。
-   - **每次成功上傳**：以 `write()` 回傳的 `updatedAt` 寫入 localStorage。
-   - **每次成功下載**：以 `snap.updatedAt` 寫入 localStorage
-     （`handleDownload` 的 merge 與 replace **兩個成功分支都要寫**）。
-3. `handleUpload` 流程改為：先 `new GistBackend(token, gistId).read()`：
-   - `snap === null`，或 `snap.content.trim()` 為空／為 `'{}'`（`createGist` 的初始 placeholder）
-     → 視為雲端無備份，直接上傳、不 confirm。
-   - 雲端有備份且 `snap.updatedAt !== localStorage 的 lastSyncedAt`（含本機無紀錄）→ `confirm`：
-     「雲端備份最後更新：{updatedAt 轉本地時間}\n本裝置上次同步：{lastSyncedAt 轉本地時間，無紀錄顯示「（無紀錄）」}\n\n雲端內容可能來自其他裝置，直接上傳將覆蓋它。仍要上傳？」
-     取消 ⇒ 中止（不上傳、不清欄位）。
-   - 相同 → 直接上傳。
-   - 之後照舊 `exportAll → encryptText → write`，成功後依第 2 點更新 lastSyncedAt。
-   - `read()` 拋錯（網路／HTTP 錯誤）⇒ 顯示錯誤並**中止上傳**——整段放在既有 try/catch 內即自然成立；
-     **不可**改成「讀不到就直接上傳」（那會讓防覆蓋檢查失效）。
-4. 錯誤處理照舊：HTTP 錯誤只回 status、token/passphrase 不進任何訊息。多一次 read API call 可接受。
-
-**不要做**：不做自動合併／三方 merge；不動加密流程與下載的兩段 confirm（T23）；
-不比對內容雜湊（updated_at 已足夠）。
-
-**驗收**：build 全綠。沙箱無法連 `api.github.com`（同 T10），真機驗證由擁有者完成：
-裝置 A 上傳 → 裝置 B（未同步過或較舊）上傳時出現覆蓋確認；
-同一裝置連續上傳兩次，第二次不應跳 confirm（lastSyncedAt 已對齊）。
-
----
-
-## T27 時間輸入改 24 小時制純文字（失焦正規化）（P1・★★・依賴：無）
-
-**背景／目標**：時間欄目前是原生 `<input type="time">`，12/24 小時制跟隨裝置語系、HTML 無法強制，
-且原生控件橫向偏寬。已拍板（2026-07-12）：**改純文字輸入＋失焦自動正規化**，保證 24 小時制、
-欄寬縮到最小；代價＝手機上沒有原生時間滾輪、改用數字鍵盤（擁有者接受）。
+**背景／目標**：行程「連結」欄目前是常駐輸入框＋↗ 按鈕，只能存裸網址。已拍板（2026-07-17，
+經互動示意頁確認）：連結欄改「**顯示可點超連結＋✎ 編輯**」——
+- 存 `[google](https://google.com)` → 顯示 **google**，文字本身是超連結（新分頁、noopener）；
+- 存裸網址 `https://google.com` → 顯示完整網址，同樣可點；
+- 空 → 只顯示一顆灰色 ✎。
+- 點 ✎ 開 popover，**兩個欄位「名稱」「連結」**，儲存時組回單一字串。
+使用者永遠不用手打括號——`[名稱](網址)` 只是儲存編碼。
+**儲存仍是單一 `link` 字串欄位**：不加欄位、不升 Dexie、備份／Gist 同步／`importAll` 零改動，
+備份 JSON 人眼可讀。原 ↗ 按鈕退役（文字本身可點）。
 
 **規格**：
-1. `src/lib/itinerary.ts` 加純函式 `normalizeTimeText(raw: string): string | null`
-   （與 `hoursBetween`／`weekdayLabel` 同檔，時間工具集中）：
-   - `trim()` 後為 `''` → 回 `''`（合法，代表清空）。
-   - `/^\d{1,2}$/`（如 `9`、`14`）→ 視為整點 → `HH:00`。
-   - `/^\d{3}$/`（如 `930`）→ 首位為時、後兩位為分 → `09:30`。
-   - `/^\d{4}$/`（如 `0930`、`1745`）→ 前兩位時、後兩位分。
-   - `/^\d{1,2}:\d{2}$/`（如 `9:30`）→ 時補零。
-   - 以上皆需通過範圍檢查：時 0–23、分 0–59；不通過或不符任何格式 → 回 `null`。
-   - **不變量**：非 null 回傳值一定是 `''` 或 `HH:MM`——與 `groupItineraryByDate` 的
-     `localeCompare` 排序及 `hoursBetween` 的 `^\d{2}:\d{2}$` 假設相容，DB 永遠只存這兩種形狀。
-2. `src/components/cells.tsx`：
-   - `TextLikeProps` 加 `normalize?: (raw: string) => string | null` 與 `inputMode?: 'numeric'`
-     （皆 optional，預設不影響現有呼叫者）。
-   - `onBlur`（`commitOnBlur` 模式）：先 `const out = normalize ? normalize(text) : text`；
-     `out === null` → `setText(value)` 恢復原值、**不**呼叫 `onChange`；
-     否則 `setText(out)`，且 `out !== value` 才呼叫 `onChange(out)`。
-   - `TimeInput` 改為 `type="text"`＋`inputMode="numeric"`＋`placeholder="HH:MM"`＋
-     `normalize={normalizeTimeText}`（`commitOnBlur` 照舊固定 true）。固定值寫在 `{...p}` 展開
-     **之後**（後者覆蓋）；`tsc` 若對 `Omit` 型別報錯，把新 prop 名一併加進 `Omit` 清單即可。
-     `TextInput`／`DateInput`／`NumberInput` **不動**（日期仍用原生 date picker，與 12/24h 無關）。
-3. 欄寬：`ItineraryTab.tsx` 開始／結束欄（約 L94／L97）`w-24` → `w-16`；
-   `ExpensesTab.tsx` 時間欄（約 L80）`w-24` → `w-16`。
-4. 測試：`itinerary.test.ts` 加 `normalizeTimeText` ≥ 8 條——空字串、`9`→`09:00`、`930`→`09:30`、
-   `0930`、`9:30`→`09:30`、`24:00`／`1260`（分超界）→ null、`abc`→ null、已是 `HH:MM` 原樣通過。
 
-**不要做**：不動 `DateInput`；不支援 12 小時制輸入（如 `930p`）；不做跨欄自動跳格。
+1. 新檔 `src/lib/link.ts`，參考實作（照抄）：
 
-**驗收**：test／build 全綠；手動：打 `930` 失焦變 `09:30` 並觸發時數自動計算（T18）；
-打亂字失焦恢復原值；手機鍵盤為數字；行程同日排序照常。
+   ```ts
+   export type ParsedLink = { text: string; url: string }
 
----
-
-## T28 數字輸入移除上下箭頭（P1・★・依賴：無）
-
-**背景／目標**：`NumberInput`（`type="number"`）的瀏覽器原生上下箭頭（spinner）常遮住數字。
-已拍板：全域隱藏。
-
-**規格**：
-1. `src/index.css` **檔尾**（既有 `body` 規則之後）直接加下列規則——此檔目前**沒有** `@layer` 區塊，
-   比照既有 `html, body` 規則的寫法即可、不要自己開 `@layer`：
-   ```css
-   input[type='number']::-webkit-outer-spin-button,
-   input[type='number']::-webkit-inner-spin-button {
-     -webkit-appearance: none;
-     margin: 0;
+   /**
+    * 解析連結欄字串。`[名稱](網址)` → { text: 名稱, url: 網址 }；
+    * 其餘非空字串整串視為網址（text 為 ''）；空／全空白 → 兩者皆 ''。
+    * 錨定頭尾的貪婪正則可正確處理名稱含 `]`、網址含 `()`（如維基百科的 `Osaka_(city)`）。
+    * `[名稱]()`（網址空）不視為合法格式，整串當網址處理。
+    */
+   export function parseLink(raw: string): ParsedLink {
+     const s = (raw ?? '').trim()
+     if (!s) return { text: '', url: '' }
+     const m = /^\[(.*)\]\((.*)\)$/.exec(s)
+     if (m && m[2].trim()) return { text: m[1].trim(), url: m[2].trim() }
+     return { text: '', url: s }
    }
-   input[type='number'] {
-     -moz-appearance: textfield;
-     appearance: textfield;
+
+   /**
+    * 組回儲存字串。網址空 → ''（名稱單獨存在無意義，等同清空；純文字備忘請用備註欄——已拍板）；
+    * 名稱空 → 存裸網址；兩者皆有 → `[名稱](網址)`。
+    */
+   export function serializeLink(text: string, url: string): string {
+     const t = text.trim()
+     const u = url.trim()
+     if (!u) return ''
+     if (!t) return u
+     return `[${t}](${u})`
+   }
+
+   /** 顯示文字：有名稱用名稱，否則完整網址；空字串回 ''。 */
+   export function linkDisplayText(raw: string): string {
+     const p = parseLink(raw)
+     return p.text || p.url
    }
    ```
-2. `cells.tsx` 的 `NumberInput` **不動**（仍 `type="number"`＋`inputMode="decimal"`，
-   手機數字鍵盤與小數輸入行為不變）。
 
-**不要做**：不改成 `type="text"`；不動任何元件邏輯。
+2. 新檔 `src/lib/link.test.ts`：≥ 10 條——
+   `[google](https://google.com)` 解析、裸網址解析、空字串／全空白、
+   網址含括號 `[維基](https://en.wikipedia.org/wiki/Osaka_(city))`（url 需完整含 `(city)`）、
+   `[名稱]()` 整串當網址、前後空白 trim、
+   `serializeLink('google','https://google.com')`、名稱空存裸網址、網址空回 `''`（名稱有值也一樣）、
+   roundtrip（`parseLink(serializeLink(t,u))` 還原）、`linkDisplayText` 有名稱／無名稱兩型。
 
-**驗收**：build 全綠；手動：花費／行程各數字格 hover／聚焦皆無上下箭頭，仍可輸入小數（如 0.21）。
+3. 新檔 `src/components/LinkField.tsx`：顯示＋popover 編輯的自足元件。
+   popover 開關與「點外面關閉」手法**照抄 `ParticipantsPicker.tsx`**（`relative` 容器＋
+   `useRef`＋document `mousedown` listener）。參考實作（照抄後可微調樣式）：
+
+   ```tsx
+   import { useEffect, useRef, useState } from 'react'
+   import { parseLink, serializeLink } from '../lib/link'
+
+   /**
+    * 連結欄位：顯示狀態＝可點超連結（有名稱顯名稱、無名稱顯完整網址）＋ ✎；
+    * 點 ✎ 開 popover 編輯「名稱」「連結」。value 為單一字串（`[名稱](網址)`、裸網址或 ''）。
+    * popover 內用原生 input＋local state，按「儲存」才 onChange 寫回。
+    */
+   export default function LinkField({
+     value,
+     onChange,
+   }: {
+     value: string
+     onChange: (raw: string) => void
+   }) {
+     const [open, setOpen] = useState(false)
+     const [text, setText] = useState('')
+     const [url, setUrl] = useState('')
+     const ref = useRef<HTMLDivElement>(null)
+
+     useEffect(() => {
+       if (!open) return
+       const onDoc = (e: MouseEvent) => {
+         if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+       }
+       document.addEventListener('mousedown', onDoc)
+       return () => document.removeEventListener('mousedown', onDoc)
+     }, [open])
+
+     function openEditor() {
+       const p = parseLink(value)
+       setText(p.text)
+       setUrl(p.url)
+       setOpen(true)
+     }
+     function save() {
+       onChange(serializeLink(text, url))
+       setOpen(false)
+     }
+
+     const p = parseLink(value)
+     const inputCls =
+       'w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
+     return (
+       <div className="relative flex min-w-0 items-center gap-1" ref={ref}>
+         {p.url && (
+           <a
+             href={p.url}
+             target="_blank"
+             rel="noopener noreferrer"
+             onClick={(e) => e.stopPropagation()}
+             className="truncate text-sky-600 underline decoration-sky-300 underline-offset-2 hover:text-sky-800"
+           >
+             {p.text || p.url}
+           </a>
+         )}
+         <button
+           type="button"
+           title={p.url ? '編輯連結' : '新增連結'}
+           onClick={(e) => {
+             e.stopPropagation()
+             if (open) setOpen(false)
+             else openEditor()
+           }}
+           className="shrink-0 rounded px-1.5 py-1 text-xs text-gray-400 hover:bg-sky-50 hover:text-sky-700"
+         >
+           ✎
+         </button>
+         {open && (
+           <div
+             className="absolute right-0 top-full z-20 mt-1 w-64 space-y-2 rounded border bg-white p-2 shadow-lg"
+             onClick={(e) => e.stopPropagation()}
+           >
+             <label className="flex items-center gap-2 text-sm">
+               <span className="w-8 shrink-0 text-xs text-gray-500">名稱</span>
+               <input
+                 className={inputCls}
+                 value={text}
+                 placeholder="例如：官網（可留空）"
+                 autoFocus
+                 onChange={(e) => setText(e.target.value)}
+                 onKeyDown={(e) => e.key === 'Enter' && save()}
+               />
+             </label>
+             <label className="flex items-center gap-2 text-sm">
+               <span className="w-8 shrink-0 text-xs text-gray-500">連結</span>
+               <input
+                 className={inputCls}
+                 value={url}
+                 placeholder="https://"
+                 inputMode="url"
+                 onChange={(e) => setUrl(e.target.value)}
+                 onKeyDown={(e) => e.key === 'Enter' && save()}
+               />
+             </label>
+             <p className="text-xs text-gray-400">
+               名稱留空＝顯示完整網址；連結留空＝儲存時清除此欄。
+             </p>
+             <div className="flex justify-end gap-2">
+               <button
+                 type="button"
+                 onClick={() => setOpen(false)}
+                 className="rounded border px-2.5 py-1 text-xs hover:bg-gray-50"
+               >
+                 取消
+               </button>
+               <button
+                 type="button"
+                 onClick={save}
+                 className="rounded bg-sky-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-sky-700"
+               >
+                 儲存
+               </button>
+             </div>
+           </div>
+         )}
+       </div>
+     )
+   }
+   ```
+
+   已知限制（與 `ParticipantsPicker` 相同、接受）：popover 在表格 `overflow-x-auto` 容器內
+   靠近邊緣時可能被裁切或觸發捲動；若在極左欄溢出可把 `right-0` 換 `left-0`，施工時目測即可。
+
+4. `src/components/trip/ItineraryTab.tsx` 兩處套用（把「`TextInput`＋↗ 按鈕」整組換成
+   `<LinkField value={it.link} onChange={(v) => update(it.id, { link: v })} />`）：
+   - 桌面 `renderRow` 的連結 `<Td className="w-40">`（約 L161–179）——`Td` 與 `w-40` 保留，
+     內層整個 `<div className="flex ...">` 換成 LinkField。
+   - 手機卡片展開表單的「連結」`CardField`（約 L295–313）——同樣把內層 flex 換成 LinkField。
+   - `addRow` 的 `link: ''` 與 DB／型別**都不動**。
+
+**不要做**：不加 `linkText` 資料欄位（已拍板用單一字串編碼）；不做網址合法性驗證；
+不自動抓網頁標題（前端跨域抓不到，已拍板名稱手動填）；不動 `exportItinerary.ts`
+（匯出文字目前不含連結，維持現狀）；popover 不用 `cells.tsx` 聚焦緩衝元件（見共通守則）。
+
+**驗收**：test／build 全綠；手動（桌面＋手機模擬）：
+✎ 開 popover 填名稱＋網址 → 儲存後顯示名稱、點名稱開新分頁；只填網址 → 顯示完整網址可點；
+連結欄留空儲存 → 欄位清空只剩 ✎；重開 popover 現存值正確拆回兩欄；
+舊資料（裸網址）不經任何轉換直接正常顯示。
 
 ---
 
-## T29 行程表欄位重組：移除活動欄＋景點三下拉拆欄（P1・★★・依賴：建議 T27/T28 後，同檔減衝突）
+## T36 景點庫網址欄比照 LinkField（P2・★・依賴：T35）
 
-**背景／目標**：「景點」欄目前是 AttractionPicker 疊兩行（上：類型＋都市小下拉；下：景點下拉），
-擠在一格；「行程／活動」自由文字欄使用率低（行程內容以景點庫為主，交通/住宿已有 T14 類型可表達）。
-已拍板（2026-07-12）：**移除「行程／活動」欄**；AttractionPicker 的三個下拉
-**拆成三個獨立表格欄**「類型」「都市」「景點」。
-**activity 資料欄位保留**（`types.ts` 不動、備份相容、T22 匯出文字對舊資料照常輸出）——
-只是表格不再顯示／編輯。
+**背景／目標**：擁有者拍板「其他連結也比照處理」——景點庫的「網址」欄（`Attraction.url`，
+同樣是單一字串欄位）套用與 T35 相同的顯示／編輯模式。
 
 **規格**：
-1. `src/components/AttractionPicker.tsx`：改為回傳 fragment 內含三個 `<Td>`
-   （類型 `w-20`、都市 `w-24`、景點 `min-w-[14rem]`；`Td` 由 `cells.tsx` import）。
-   內部 state（`fType`／`fCity`）、過濾邏輯、optgroup label 自組、「目前選取」保底、
-   `visitedIds`、★ 前綴等 **T16 的行為全部不變**，純版面容器改變；
-   唯一呼叫者是 `ItineraryTab.tsx`（已確認），Props 介面不動。
-2. `src/components/trip/ItineraryTab.tsx`（行號以現檔為準，約略位置供快速定位）：
-   - 表頭（`renderHead`，約 L165–184）「景點」一欄改為「類型」「都市」「景點」三欄；
-     `renderRow` 內原景點 `<Td>`（約 L100–109）改為直接放 `<AttractionPicker …/>` 於 `<tr>` 之下
-     （元件自帶三個 `<Td>`；React fragment 是合法的 `<tr>` 子內容）。
-   - 移除「行程／活動」`Th`（約 L173）＋`Td`（約 L110–112，含其 `TextInput`）；
-     `addRow` **仍寫入** `activity: ''`（型別必填、備份相容）。
-   - 空狀態 `colSpan`（約 L194）12 → 13；表格 `min-w-[72rem]`（兩處）依新欄寬微調
-     （估 74rem 上下，施工時自量，原則：不出現欄位互擠、也不留大片空白）。
-3. **不動**：`types.ts`（`activity` 欄位保留）、`exportItinerary.ts`（舊資料 activity 照常輸出，
-   新列 activity 恆空自然不輸出）、`orphanItinerary` 健檢面板的 activity 顯示、DB、備份。
+1. `src/pages/Attractions.tsx` 景點列的網址 `<Td className="min-w-[10rem]">`（約 L351–369）：
+   內層「`TextInput`＋↗ 按鈕（T7）」整組換成
+   `<LinkField value={a.url} onChange={(v) => update(a.id, { url: v })} />`。
+2. 同檔 `DedupePanel` 的網址差異顯示（約 L956–959 的 `{a.url || —}`）：
+   改 `{linkDisplayText(a.url) || <span className="text-gray-300">—</span>}`
+   （import 自 `../lib/link`）——比對重複景點時顯示名稱或網址，不顯示原始括號字串。
+3. **不動**：`importAttractions.ts`（CSV 匯入寫入的是裸網址，本來就相容）、
+   `dedupeAttractions.ts` 的 `mergeAttractionFields`（url 是不透明字串，擇優邏輯照舊）、
+   `AttractionPicker`（不顯示 url，無破口）、名稱搜尋（T7 的篩選比對 name/address/notes，不含 url）。
 
-**不要做**：不做 activity 資料遷移（已拍板保留原地）；不改 AttractionPicker 的過濾／保底邏輯；
-不動花費頁。
+**不要做**：不動 CSV 匯入；不做既有資料轉換（裸網址照常顯示）。
 
-**驗收**：build 全綠、既有測試不變；手動：行程表三個下拉各自成欄、無「行程／活動」欄；
-每列篩選獨立運作、「目前選取」保底照常；舊資料的 activity 文字在「複製行程文字」輸出中仍可見。
+**驗收**：build 全綠、既有測試全綠；手動：景點庫網址欄可 ✎ 編輯名稱＋網址、顯示可點連結；
+「整理重複」面板網址顯示的是名稱（或裸網址），不出現 `[...](...)` 原始字串。
 
 ---
 
-## T30 旅程日期整批平移（P2・★★・依賴：無）
+## T37 行程手機卡片摘要改版：金額 → 備註＋連結（P1・★★・依賴：T35，同檔）
 
-**背景／目標**：機票改期時，目前得逐列改行程日期。已拍板（2026-07-12）：提供「整趟平移 N 天」。
-**平移範圍＝trip 起訖日期＋該旅程所有行程列的非空 `date`；花費列日期不動**
-（付款日是歷史事實，不隨行程改期而改變）。
+**背景／目標**：手機卡片收合時目前右側顯示「時數 · 外幣小計」，但旅途中看行程要的是
+地點、備註與連結，錢展開再看即可。已拍板（2026-07-17，經示意頁確認）：
+**收合摘要不再顯示時數與金額**（金額只在展開後的小計行），改為——
+主行「時間＋景點名＋連結（可點）＋▼」、第二行灰字備註（截斷、沒備註不顯示）。
+當日小計照舊留在日期標題列，桌面表格完全不動。
 
-**規格**：
-1. `src/lib/itinerary.ts` 加純函式 `shiftDateStr(date: string, days: number): string`：
-   - `date` 符合 `^\d{4}-\d{2}-\d{2}$` 且 `days` 為整數 → 以本地時區 `new Date(y, m-1, d)`
-     加 `days` 天再格式化回 `YYYY-MM-DD`（`padStart`；**不要**用 `new Date('YYYY-MM-DD')`，
-     UTC 時區陷阱同 `datesInRange` 注意事項）。
-   - 格式不合或 `days` 非整數 → 回傳原字串（含空字串——「未排日期」列不動）。
-   - 測試 ≥ 5 條：+N、−N、跨月、跨年、非法輸入原樣返回。
-2. `OverviewTab.tsx`：出發／回程日期的 grid 下方加「平移日期」小按鈕（`rounded border` 樣式
-   比照全 App 既有小按鈕）：
-   - `prompt('整趟平移天數（正數延後、負數提前）')` → `parseInt`；非有限整數或 0 ⇒ 中止。
-   - `confirm` 摘要：新的起訖日期（各以 `shiftDateStr` 預算）＋「將同步平移 N 筆行程列日期
-     （花費日期不變）」→ 取消 ⇒ 中止。
-   - 確定 ⇒ `db.transaction('rw', db.trips, db.itinerary, ...)`：
-     更新 `trip.startDate`／`endDate`（非空者才平移）＋該旅程所有行程列的非空 `date`；
-     trip 的更新沿用本檔既有 `update` 慣例（約 L15：
-     `db.trips.update(trip.id, { ...patch, updatedAt: now() })`，`now` 已 import）。
-3. UI 用原生 `prompt`／`confirm`（同 T23 慣例，不做自訂 modal）。
+**規格**（全部在 `src/components/trip/ItineraryTab.tsx` 的 `renderCard`，約 L211–327）：
+1. 摘要列外層由 `<button>` 改
+   `<div role="button" tabIndex={0} aria-expanded={expanded} onClick={() => toggleExpand(it.id)} onKeyDown={...}>`
+   （原因與 `onKeyDown` 寫法見共通守則——內部要放 `<a>`，不能巢在 `<button>` 裡）。
+   原 className（`flex w-full items-center gap-2 px-3 py-2 ...` 加上 `cursor-pointer`）沿用；
+   結構改為外層 div 包「主行 flex」＋「備註行」兩層，讓點備註行也能展開。
+2. 主行內容：
+   - 時間（既有 `timeSummary(it)`）與景點名（既有 `attractionName`）**照舊**。
+   - **刪除**右側時數／外幣小計的 `<span>`（約 L236–240，`it.hours ? ... foreign ...` 那段）。
+   - 原位置改放連結（`parseLink(it.link)`，import 自 `../../lib/link`）：`p.url` 非空才渲染
+     ```tsx
+     <a
+       href={p.url}
+       target="_blank"
+       rel="noopener noreferrer"
+       onClick={(e) => e.stopPropagation()}
+       className="max-w-[7.5rem] shrink-0 truncate text-xs text-sky-600 underline decoration-sky-300 underline-offset-2"
+     >
+       {p.text || p.url}
+     </a>
+     ```
+     （摘要列**不放 ✎**——編輯入口在展開後的連結欄位，該欄 T35 已換 LinkField。）
+   - 展開三角 ▼／▲ 照舊放最右。
+3. 備註行：`it.notes` 非空時，主行下方渲染
+   `<div className="truncate pb-2 text-xs text-gray-400">{it.notes}</div>`
+   （水平 padding 跟主行對齊；沒備註時不渲染、主行自己的 `py-2` 維持卡片高度）。
+4. 展開後表單**不動**（T35 已把連結欄換 LinkField；小計行本來就在展開區，金額資訊不流失）。
+5. `timeSummary`／`attractionName`／`expandedIds`／`toggleExpand`／桌面 `renderRow` 全部不動。
 
-**不要做**：不平移花費列日期（已拍板）；不做跨旅程批次；不做日曆選擇器。
+**不要做**：不動桌面表格；不動當日標題列與頁尾總計；不把時數塞回摘要（已拍板金額類全部移展開後）。
 
-**驗收**：test／build 全綠；手動：旅程 +2 天 → 總覽起訖與所有行程列日期皆 +2、
-「未排日期」列不動、花費列日期不動；−N 天亦正常；T13 的空日補齊隨新區間即時更新。
-
----
-
-## T31 行程頁手機卡片式檢視（P1・★★★・依賴：T29——欄位定案後再做，避免重工）
-
-**背景／目標**：App 的真實使用場景是旅途中用手機看行程，但行程表 `min-w` 七十多 rem、
-手機上全靠橫向捲動。已拍板（2026-07-12）：**手機體驗是本輪重點投資項**，行程頁先行。
-
-**規格**（★★★ 大項；架構如下已拍板，視覺細節施工時可再與擁有者確認）：
-1. 斷點：Tailwind `sm`（640px）**以下**改卡片式、以上維持現有表格——同一份資料兩套渲染
-   （表格容器 `hidden sm:block`、卡片容器 `sm:hidden`），`useLiveQuery`／handlers／
-   `addRow`／`update`／`remove` **共用，不得複製業務邏輯**；逐日分組外框、當日小計標題列、
-   「＋在這天新增一列」按鈕兩種檢視皆保留。
-2. 卡片＝一列行程，預設**收合**只顯示摘要行：
-   - 摘要：開始–結束時間（皆空顯示灰字 `--:--`）＋景點名（`attractionId` 查表；未選顯示
-     灰字「(未選景點)」）＋右側時數／外幣小計；點卡片本體展開／收合（收合狀態存 component
-     state，`Set<string>` of id）。
-   - 展開後：直向表單列出全部欄位——日期、開始／結束（T27 的 `TimeInput`）、
-     類型／都市／景點三下拉（做法**指定**：`AttractionPicker` 加 `variant?: 'cells' | 'stack'` prop，
-     預設 `'cells'`＝T29 的三個 `<Td>`、`ItineraryTab` 表格不用改呼叫；`'stack'`＝直向排列的
-     三個 select 供卡片用。**內部 state／過濾／保底邏輯只有一份**，`variant` 只切換最外層版面容器）、
-     時數、交通、花費、備註、連結（含 ↗）、刪除 ✕。欄位元件一律沿用 `cells.tsx`。
-3. 新增列（該日「＋新增」）後自動展開該卡片，方便直接編輯。
-4. 頁尾總計與「複製行程文字」按鈕在手機版照常顯示（既有 flex-wrap 微調即可）。
-5. 無 schema／純函式變動——純 UI 任務；若摘要文字組合等邏輯可萃取，放 `src/lib/` 純函式＋測試（可選）。
-
-**不要做**：不動桌面表格版面；不做拖曳排序；不動花費頁（T32 才做）。
-
-**驗收**：build 全綠；手動（DevTools 手機模擬 390px 寬＋真機）：行程頁**無橫向捲動**、
-逐日結構清楚、卡片可展開編輯所有欄位、時間輸入喚起數字鍵盤（T27）、桌面寬度下與改版前無異。
+**驗收**：build 全綠；手動（390px 寬）：收合卡片顯示「時間＋景點名＋連結名＋▼」與備註第二行、
+無時數／金額；點連結開新分頁**且卡片不展開**；點卡片其他處（含備註行）展開；
+鍵盤 Enter／空白鍵也能展開；展開後小計照常顯示。
 
 ---
 
-## T32 花費頁手機卡片式檢視（P2・★★★・依賴：T31，沿用其模式）
+## T38 分帳頁：同行者手機卡片＋結餘表壓縮＋護照名 placeholder 移除（P2・★★・依賴：無；凍結區局部解凍）
 
-**背景／目標**：比照 T31 把 `ExpensesTab.tsx` 的表格在手機改卡片式。
+**背景／目標**：分帳頁在手機上整頁橫向捲動。已拍板（2026-07-17）：
+①「同行者」表手機改卡片式，**收合只顯示中英名**（姓名＋護照名）；
+② 護照名輸入框的示範 placeholder「LIN,LIWEN」移除、留空白；
+③ 結餘表（唯讀數字表）手機不橫捲、四欄自然壓縮。
+**凍結區解凍範圍（僅此）**：`SettlementTab.tsx` 的版面層——`settle`／`settleByCurrency`、
+expenses 彙整迴圈（含 T19 已結清過濾、T24 幣別分桶）、`MemberSelect`／`ParticipantsPicker`
+一律不動；members 的讀寫沿用檔內既有 `addMember`／`updateM`／`removeM`。
 
-**規格**：
-1. 斷點、雙渲染、邏輯共用原則**完全比照 T31**。
-2. 卡片摘要行：日期＋品項＋金額（該列幣別）；展開後直向列出全部欄位
-   （日期、時間、品項、幣別、金額、手續費、付錢者、分攤、狀態、備註、刪除——
-   付錢者／分攤沿用 `MemberSelect`／`ParticipantsPicker`，**僅擺放位置改變、元件不動**，
-   不屬凍結區解凍範圍）。
-3. 頁尾小計／總計／平均照常顯示。
+**規格**（全部在 `src/components/trip/SettlementTab.tsx`）：
+1. **placeholder**：護照名 `TextInput` 的 `placeholder="LIN,LIWEN"`（約 L79）整個屬性刪除。
+2. **同行者卡片**（模式照共通守則／T31）：
+   - 外層 `<div className="overflow-x-auto rounded-lg border bg-white">`（約 L59）拆成
+     `rounded-lg border bg-white` 容器＋桌面 `<div className="hidden overflow-x-auto sm:block">`
+     （原表格 `min-w-[40rem]` 照舊）＋手機 `<div className="divide-y sm:hidden">`（卡片群）。
+   - 加 `expandedIds: Set<string>` state＋`toggleExpand(id)`（抄 `ItineraryTab.tsx` 約 L31–38）；
+     `addMember` 在 `db.members.add(m)` 之後把 `m.id` 加入 `expandedIds`（新增即展開）。
+   - 卡片收合摘要（無內部互動元素 → 用 `<button>` 即可，抄 `ItineraryTab.renderCard` 的
+     `card-sum` 版型）：`{m.name || 灰字「(未命名)」}`（`flex-1 truncate`）＋
+     `m.passportName` 灰字小字（`shrink-0 text-xs text-gray-500`，空就不渲染）＋▼／▲。
+   - 展開後直向表單（檔尾加 local `CardField`，抄 `ItineraryTab.tsx` 檔尾）：
+     姓名（`TextInput`）、護照名（`TextInput`，無 placeholder）、護照號碼（`TextInput`）、
+     生日（`DateInput`）、右下 `✕ 刪除這位成員`（呼叫既有 `removeM`，樣式抄
+     `ItineraryTab` 卡片的刪除鈕）。
+   - 空狀態雙容器：桌面既有 `colSpan={5}` 列照舊、手機置中灰字同文案。
+3. **結餘表壓縮**：結餘表 `<table className="w-full min-w-[32rem] text-sm">`（約 L142）改
+   `min-w-[32rem]` → `sm:min-w-[32rem]`——手機斷點下無最小寬度、
+   「成員／已付／應分攤／結餘」四欄自然壓縮同屏。表格內容、`fmt`、紅綠結餘樣式全部不動。
+   「結算建議」區塊本來就是文字清單，不動。
 
-**不要做**：不動桌面表格；不動分帳頁（`SettlementTab` 維持凍結）；不動任何金額計算。
+**不要做**：不動 `settle`／`settleByCurrency`／entries 彙整；不動花費頁的
+`MemberSelect`／`ParticipantsPicker`；不加成員排序／拖曳；不做護照號碼遮罩。
 
-**驗收**：build 全綠；手動（390px 寬）：花費頁無橫向捲動、卡片可展開編輯全部欄位、
-台幣換算小計照常即時更新。
+**驗收**：build 全綠、既有測試全綠；手動（390px 寬）：分帳頁**無橫向捲動**；
+同行者卡片收合顯示「姓名＋護照名」、展開可編輯四欄與刪除、新增成員自動展開；
+結餘表四欄同屏；桌面寬度下與改版前無異（除 placeholder 消失）；
+結算數字與改版前完全相同（版面層任務，數字變了就是動到不該動的）。
 
 ---
 
-## T33 健檢擴充：成員孤兒參照（P3・★★・依賴：無；凍結區局部解凍）
+## T39 行李頁手機卡片（P2・★★・依賴：無；凍結區局部解凍）
 
-**背景／目標**：刪除成員後，花費列的 `payerId`／`participantIds` 可能指向已不存在的成員
-（CLAUDE.md「已知小限制」記載的問題）。健檢（T9）目前只查行程→景點孤兒。
-已拍板（2026-07-12）：列入但**低優先（P3）**。
+**背景／目標**：行李頁手機也改卡片式。行李的特殊點（已拍板，2026-07-17）：
+**手機上最常做的動作是「邊收行李邊打勾」**——所以**勾選框在收合狀態就直接可點**
+（不用先展開），點列的其他地方才是展開編輯。
+**凍結區解凍範圍（僅此）**：`PackingTab.tsx` 的版面層；`addRow`／`update`／`remove`／
+T21 行李繼承（在 `TripList.tsx`）一律不動。
 
-**規格**：
-1. 新檔 `src/lib/orphanMembers.ts`：純函式
-   `findOrphanMemberRefs(expenses: ExpenseItem[], members: Array<Pick<Member, 'id'>>): OrphanMemberRef[]`，
-   其中 `OrphanMemberRef = { expense: ExpenseItem; orphanPayer: boolean; orphanParticipantIds: string[] }`：
-   - 以 members id 建 Set；`payerId` 非空且查無 → `orphanPayer: true`；
-     `participantIds` 內查無的 id 收進 `orphanParticipantIds`。
-   - 兩者皆無問題的列不回傳；保留輸入順序。＋測試 ≥ 3 條（payer 孤兒、participant 部分孤兒、無孤兒空陣列）。
-2. `Attractions.tsx` 的 `HealthPanel` 加第二區塊「成員參照」（鏡射既有孤兒行程區塊版型）：
-   - 額外 `useLiveQuery` 讀 `db.expenses`／`db.members`（全表，沿 T5 全掃慣例）。
-   - 依 `tripId` 分組列出問題列（日期／品項／問題描述，如「付錢者已刪除」「分攤含 2 位已刪成員」）。
-   - 每列「清除參照」按鈕：confirm 後一鍵清該列全部孤兒——組 patch 物件：
-     `orphanPayer` 為 true 時加 `payerId: ''`；`orphanParticipantIds` 非空時加
-     `participantIds: 原陣列過濾掉孤兒 id 後的結果`；沒問題的欄位**不要**寫進 patch；
-     最後一次 `db.expenses.update(id, patch)`。
-     confirm 訊息需提醒：「清除後若分攤名單變為空，該列改為**全體均分**；付錢者清空後該列**不列入結算**。」
-   - 無問題時顯示「無成員孤兒參照，資料一致。」
-3. **凍結區解凍範圍（僅此）**：讀 `db.members`、寫 `db.expenses` 的 `payerId`／`participantIds`。
-   `SettlementTab`／`settle()`／`MemberSelect`／`ParticipantsPicker` 一律不動。
+**規格**（全部在 `src/components/trip/PackingTab.tsx`）：
+1. 雙渲染（模式照共通守則）：外層 `<div className="overflow-x-auto rounded-lg border bg-white">`
+   （約 L36）拆桌面（`hidden overflow-x-auto sm:block`，原表格 `min-w-[36rem]` 照舊）＋
+   手機（`divide-y sm:hidden` 卡片群）；空狀態雙容器。
+2. 加 `expandedIds: Set<string>`＋`toggleExpand(id)`；`addRow` 在 `db.packing.add(row)` 之後
+   把 `row.id` 加入 `expandedIds`。
+3. 卡片收合摘要——**內含 checkbox（互動元素），外層必須用 `div role="button"`**（見共通守則）：
+   - 勾選框：沿用桌面同款 `<input type="checkbox" className="h-4 w-4 accent-sky-600" ...>`，
+     `checked={it.checked}`、`onChange={(e) => update(it.id, { checked: e.target.checked })}`、
+     **另加 `onClick={(e) => e.stopPropagation()}`**——點勾選框只打勾、不展開。
+   - 項目名（`flex-1 truncate`）：`it.item` 空 → 灰字「(未填)」；`it.checked` 為 true →
+     加 `text-gray-400 line-through`（比照桌面）。
+   - 份量：`it.quantity` 非零 → 灰字小字顯示數字（`shrink-0 text-xs text-gray-500`，
+     不加單位；零＝不顯示，與全 App「數字 0 顯示空白」慣例一致）。
+   - ▼／▲ 最右。
+   - `it.notes` 非空 → 主行下方備註行 `<div className="truncate pb-2 text-xs text-gray-400">`
+     （版型同 T37 第 3 點）。
+4. 展開後直向表單（檔尾 local `CardField`）：項目（`TextInput`，checked 時同樣劃線變灰）、
+   份量(人)（`NumberInput`）、備註（`TextInput`）、右下 `✕ 刪除這列`。
+5. 頁尾「＋新增一列」與「已勾選 X / Y」照常（既有 flex-wrap 版面不用改）。
 
-**不要做**：不做「重新指定成員」的進階 UI（只清除）；不動行程列的 `payerId`（T17 後行程不進結算，無實害）；
-不加索引。
+**不要做**：不動桌面表格；不做拖曳排序；不做「點整列打勾」（已拍板：勾選框打勾、
+點列展開，與其他分頁卡片行為一致）；不動 T21 繼承邏輯。
 
-**驗收**：test／build 全綠；手動：刪除有花費參照的成員 → 健檢列出該列 → 清除後分帳頁不再出現幽靈結餘。
+**驗收**：build 全綠、既有測試全綠；手動（390px 寬）：行李頁**無橫向捲動**；
+收合狀態直接點勾選框可打勾／取消**且卡片不展開**，項目名即時劃線；
+點列其他處展開可編輯；新增一列自動展開；「已勾選 X / Y」即時更新；桌面寬度下與改版前無異。
 
 ---
 
 ## 觀察中／不做
 
 - **觀察中（未排程）**：行程頁直接新增景點（picker 內開 modal）；當日景點串 Google Maps 路線；
-  總覽頁旅程摘要卡；花費分類統計。
-- **不做**：備份提醒（擁有者評估不需要）；匯率 API 自動抓（牴觸離線優先、增加網路依賴）。
-- **凍結（保留功能與資料、暫停開發）**：分帳／成員、行李——T33 的局部修改除外（見共通守則）。
+  總覽頁旅程摘要卡；花費分類統計；T22「複製行程文字」輸出連結
+  （T35 之後技術上可行——`linkDisplayText` 現成，擁有者尚未決定要不要加）。
+- **不做**：備份提醒（擁有者評估不需要）；匯率 API 自動抓（牴觸離線優先、增加網路依賴）；
+  連結欄自動抓網頁標題（前端跨域抓不到）。
+- **凍結（保留功能與資料、暫停開發）**：分帳／成員、行李——T38／T39 的版面層修改除外（見共通守則）。
