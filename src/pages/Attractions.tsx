@@ -25,6 +25,8 @@ import { applyMerge, findDuplicateGroups } from '../lib/dedupeAttractions'
 import { findOrphanItinerary } from '../lib/orphanItinerary'
 import { findOrphanMemberRefs, type OrphanMemberRef } from '../lib/orphanMembers'
 import { visitedAttractionIds } from '../lib/visited'
+import { linkDisplayText } from '../lib/link'
+import LinkField from '../components/LinkField'
 
 const inputCls =
   'rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
@@ -349,23 +351,7 @@ export default function Attractions() {
                   <TextInput value={a.address} onChange={(v) => update(a.id, { address: v })} />
                 </Td>
                 <Td className="min-w-[10rem]">
-                  <div className="flex items-center gap-1">
-                    <TextInput
-                      value={a.url}
-                      placeholder="https://"
-                      onChange={(v) => update(a.id, { url: v })}
-                    />
-                    {a.url.trim() && (
-                      <button
-                        type="button"
-                        title="開啟網址"
-                        onClick={() => window.open(a.url, '_blank', 'noopener')}
-                        className="shrink-0 rounded px-1.5 py-1 text-xs text-gray-500 hover:bg-sky-50 hover:text-sky-700"
-                      >
-                        ↗
-                      </button>
-                    )}
-                  </div>
+                  <LinkField value={a.url} onChange={(v) => update(a.id, { url: v })} />
                 </Td>
                 <Td className="min-w-[8rem]">
                   <TextInput value={a.notes} onChange={(v) => update(a.id, { notes: v })} />
@@ -955,7 +941,7 @@ function DedupePanel({
                               </div>
                               <div className="truncate">
                                 <span className="text-gray-400">網址：</span>
-                                {a.url || <span className="text-gray-300">—</span>}
+                                {linkDisplayText(a.url) || <span className="text-gray-300">—</span>}
                               </div>
                               <div className="truncate">
                                 <span className="text-gray-400">備註：</span>
