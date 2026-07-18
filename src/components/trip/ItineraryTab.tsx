@@ -15,6 +15,7 @@ import {
 } from '../../lib/itinerary'
 import { visitedAttractionIds } from '../../lib/visited'
 import { itineraryToText } from '../../lib/exportItinerary'
+import { parseLink } from '../../lib/link'
 
 export default function ItineraryTab({ trip }: { trip: Trip }) {
   const items = useLiveQuery(
@@ -198,33 +199,54 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
     const name = attractionName(it.attractionId)
     const t = timeSummary(it)
     const foreign = itineraryForeignSubtotal(it)
+    const p = parseLink(it.link)
     return (
       <div key={it.id}>
-        <button
-          type="button"
-          onClick={() => toggleExpand(it.id)}
+        <div
+          role="button"
+          tabIndex={0}
           aria-expanded={expanded}
-          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+          onClick={() => toggleExpand(it.id)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              if (e.key === ' ') e.preventDefault()
+              toggleExpand(it.id)
+            }
+          }}
+          className="cursor-pointer text-sm hover:bg-gray-50"
         >
-          <span
-            className={`shrink-0 tabular-nums ${t.muted ? 'text-gray-400' : 'text-gray-600'}`}
-          >
-            {t.text}
-          </span>
-          <span className="flex-1 truncate">
-            {name === null ? (
-              <span className="text-gray-400">(未選景點)</span>
-            ) : (
-              name
+          <div className="flex items-center gap-2 px-3 py-2">
+            <span
+              className={`shrink-0 tabular-nums ${t.muted ? 'text-gray-400' : 'text-gray-600'}`}
+            >
+              {t.text}
+            </span>
+            <span className="flex-1 truncate">
+              {name === null ? (
+                <span className="text-gray-400">(未選景點)</span>
+              ) : (
+                name
+              )}
+            </span>
+            {p.url && (
+              <a
+                href={p.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="max-w-[7.5rem] shrink-0 truncate text-xs text-sky-600 underline decoration-sky-300 underline-offset-2"
+              >
+                {p.text || p.url}
+              </a>
             )}
-          </span>
-          <span className="shrink-0 text-right text-xs tabular-nums text-gray-500">
-            {it.hours ? `${fmt(it.hours)} h` : ''}
-            {it.hours && foreign ? ' · ' : ''}
-            {foreign ? `${cur} ${fmt(foreign)}` : ''}
-          </span>
-          <span className="shrink-0 text-xs text-gray-400">{expanded ? '▲' : '▼'}</span>
-        </button>
+            <span className="shrink-0 text-xs text-gray-400">{expanded ? '▲' : '▼'}</span>
+          </div>
+          {it.notes && (
+            <div className="truncate px-3 pb-2 text-xs text-gray-400">
+              {it.notes}
+            </div>
+          )}
+        </div>
         {expanded && (
           <div className="space-y-2 border-t bg-gray-50/50 px-3 py-3">
             <CardField label="日期">
