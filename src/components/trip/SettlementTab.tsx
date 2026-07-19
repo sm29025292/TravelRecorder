@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { Trip, Member } from '../../types'
 import { db } from '../../db/db'
@@ -18,6 +19,15 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
     [],
   )
 
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const toggleExpand = (id: string) =>
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
   async function addMember() {
     const list = members ?? []
     const sort = (list.length ? list[list.length - 1].sort : 0) + 1
@@ -31,6 +41,11 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
       sort,
     }
     await db.members.add(m)
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      next.add(m.id)
+      return next
+    })
   }
   const updateM = (id: string, patch: Partial<Member>) => db.members.update(id, patch)
   const removeM = (id: string) => db.members.delete(id)
@@ -56,55 +71,120 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
       {/* 同行者 */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">同行者</h2>
-        <div className="overflow-x-auto rounded-lg border bg-white">
-          <table className="w-full min-w-[40rem] text-sm">
-            <thead className="bg-gray-50 text-left text-xs text-gray-500">
-              <tr>
-                <Th>姓名</Th>
-                <Th>護照名</Th>
-                <Th>護照號碼</Th>
-                <Th>生日</Th>
-                <Th></Th>
-              </tr>
-            </thead>
-            <tbody>
-              {ms.map((m) => (
-                <tr key={m.id} className="border-t">
-                  <Td className="min-w-[7rem]">
-                    <TextInput value={m.name} onChange={(v) => updateM(m.id, { name: v })} />
-                  </Td>
-                  <Td className="min-w-[8rem]">
-                    <TextInput
-                      value={m.passportName}
-                      placeholder="LIN,LIWEN"
-                      onChange={(v) => updateM(m.id, { passportName: v })}
-                    />
-                  </Td>
-                  <Td className="min-w-[8rem]">
-                    <TextInput
-                      value={m.passportNumber}
-                      onChange={(v) => updateM(m.id, { passportNumber: v })}
-                    />
-                  </Td>
-                  <Td className="w-40">
-                    <DateInput value={m.birthday} onChange={(v) => updateM(m.id, { birthday: v })} />
-                  </Td>
-                  <Td>
-                    <IconButton title="刪除這位成員" onClick={() => removeM(m.id)}>
-                      ✕
-                    </IconButton>
-                  </Td>
-                </tr>
-              ))}
-              {ms.length === 0 && (
+        <div className="rounded-lg border bg-white">
+          <div className="hidden overflow-x-auto sm:block">
+            <table className="w-full min-w-[40rem] text-sm">
+              <thead className="bg-gray-50 text-left text-xs text-gray-500">
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-gray-400">
-                    尚無同行者，點下方「新增同行者」。加了成員後，花費／行程／購物的「付錢」「分攤」才能選人。
-                  </td>
+                  <Th>姓名</Th>
+                  <Th>護照名</Th>
+                  <Th>護照號碼</Th>
+                  <Th>生日</Th>
+                  <Th></Th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {ms.map((m) => (
+                  <tr key={m.id} className="border-t">
+                    <Td className="min-w-[7rem]">
+                      <TextInput value={m.name} onChange={(v) => updateM(m.id, { name: v })} />
+                    </Td>
+                    <Td className="min-w-[8rem]">
+                      <TextInput
+                        value={m.passportName}
+                        onChange={(v) => updateM(m.id, { passportName: v })}
+                      />
+                    </Td>
+                    <Td className="min-w-[8rem]">
+                      <TextInput
+                        value={m.passportNumber}
+                        onChange={(v) => updateM(m.id, { passportNumber: v })}
+                      />
+                    </Td>
+                    <Td className="w-40">
+                      <DateInput value={m.birthday} onChange={(v) => updateM(m.id, { birthday: v })} />
+                    </Td>
+                    <Td>
+                      <IconButton title="刪除這位成員" onClick={() => removeM(m.id)}>
+                        ✕
+                      </IconButton>
+                    </Td>
+                  </tr>
+                ))}
+                {ms.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-6 text-center text-gray-400">
+                      尚無同行者，點下方「新增同行者」。加了成員後，花費／行程／購物的「付錢」「分攤」才能選人。
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="divide-y sm:hidden">
+            {ms.map((m) => {
+              const expanded = expandedIds.has(m.id)
+              return (
+                <div key={m.id}>
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    onClick={() => toggleExpand(m.id)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+                  >
+                    <span className="flex-1 truncate">
+                      {m.name || <span className="text-gray-400">(未命名)</span>}
+                    </span>
+                    {m.passportName && (
+                      <span className="shrink-0 text-xs text-gray-500">{m.passportName}</span>
+                    )}
+                    <span className="shrink-0 text-xs text-gray-400">
+                      {expanded ? '▲' : '▼'}
+                    </span>
+                  </button>
+                  {expanded && (
+                    <div className="space-y-2 border-t bg-gray-50/50 px-3 py-3">
+                      <CardField label="姓名">
+                        <TextInput value={m.name} onChange={(v) => updateM(m.id, { name: v })} />
+                      </CardField>
+                      <CardField label="護照名">
+                        <TextInput
+                          value={m.passportName}
+                          onChange={(v) => updateM(m.id, { passportName: v })}
+                        />
+                      </CardField>
+                      <CardField label="護照號碼">
+                        <TextInput
+                          value={m.passportNumber}
+                          onChange={(v) => updateM(m.id, { passportNumber: v })}
+                        />
+                      </CardField>
+                      <CardField label="生日">
+                        <DateInput
+                          value={m.birthday}
+                          onChange={(v) => updateM(m.id, { birthday: v })}
+                        />
+                      </CardField>
+                      <div className="flex justify-end pt-1">
+                        <button
+                          type="button"
+                          onClick={() => removeM(m.id)}
+                          className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                        >
+                          ✕ 刪除這位成員
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            {ms.length === 0 && (
+              <div className="p-6 text-center text-sm text-gray-400">
+                尚無同行者，點下方「新增同行者」。加了成員後，花費／行程／購物的「付錢」「分攤」才能選人。
+              </div>
+            )}
+          </div>
         </div>
         <button
           onClick={addMember}
@@ -139,7 +219,7 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
               <div key={currency} className="space-y-3">
                 <h3 className="text-base font-semibold">{title}</h3>
                 <div className="overflow-x-auto rounded-lg border bg-white">
-                  <table className="w-full min-w-[32rem] text-sm">
+                  <table className="w-full text-sm sm:min-w-[32rem]">
                     <thead className="bg-gray-50 text-left text-xs text-gray-500">
                       <tr>
                         <Th>成員</Th>
@@ -193,5 +273,14 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
         )}
       </section>
     </div>
+  )
+}
+
+function CardField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <span className="w-14 shrink-0 text-xs text-gray-500">{label}</span>
+      <span className="flex-1">{children}</span>
+    </label>
   )
 }
