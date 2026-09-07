@@ -615,6 +615,11 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   `amount`/`fee` 0、`sort` 1..6、其餘欄位空、`payerId`/`participantIds` 留空＝全體均分），未勾則不帶。
   對話框名稱/日期用原生 input＋local state（非 `cells.tsx` 聚焦緩衝——按「建立」才寫 DB，同 T35 popover 例外）。
   無 schema／`src/lib` 純函式／備份格式變動；純 UI／流程調整、無新測試；既有 155 綠、build 通過。
+- ✅ **複製旅程不再自動預填名稱**（2026-09-07）：`src/pages/TripList.tsx` 的 `onSourceChange`
+  移除選來源時 `setName('（來源名）（複製）')` 那段，只保留 `setCopyFromId(id)`——不論「全新空白」
+  或「複製既有旅程」，旅程名稱一律由使用者在對話框自行輸入（不再被複製預設名蓋掉；覆蓋 T41
+  原「選來源預填（複製）」行為）。名稱仍必填（`canCreate` 未動）、日期本來就取自對話框輸入。
+  純 UI 微調、無 schema／`src/lib`／備份變動、無新測試；既有 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
