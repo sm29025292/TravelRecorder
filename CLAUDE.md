@@ -620,6 +620,24 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   或「複製既有旅程」，旅程名稱一律由使用者在對話框自行輸入（不再被複製預設名蓋掉；覆蓋 T41
   原「選來源預填（複製）」行為）。名稱仍必填（`canCreate` 未動）、日期本來就取自對話框輸入。
   純 UI 微調、無 schema／`src/lib`／備份變動、無新測試；既有 155 綠、build 通過。
+- ✅ **T43 景點庫新增改「完整表單＋確定」＋輸入框 datalist 級聯建議**（2026-09-07）：全部在
+  `src/pages/Attractions.tsx`。**需求 1（填完整再確定）**：新增 state `newName`／`newAddress`／
+  `newUrl`／`newNotes`／`newPriority`；原本按「＋新增景點」立刻插空白列的 `addRow()` 改為
+  先 `if (!newName.trim()) return` 防呆、以各 `new*` state（`name` 記得 `.trim()`）組出完整
+  `Attraction` 後 `db.attractions.add`，成功後清空 `newName`／`newType`／`newAddress`／`newUrl`／
+  `newNotes`／`newPriority`、**保留** `newCountry`／`newCity`／`newDistrict`（方便連續新增同區景點）。
+  右上原「國家／都市／區域／類型＋新增景點」那排拆成兩塊：頁頭工具列只留「匯入 CSV／整理重複／
+  健檢」三顆按鈕（位置行為不變）；下方新增獨立「新增景點」表單區塊（`rounded-lg border bg-gray-50`），
+  含國家／都市／區域／類型／景點名稱／詳細地址／網址／備註／優先度（優先度用既有 `PriorityStars`
+  元件、`TextInput` 沿用 `cells.tsx`），按鈕文字改「確定新增」、`newName.trim()` 為空時 `disabled`
+  （`disabled:bg-gray-300`）並附灰字「請先輸入景點名稱」。空狀態提示文字一併改為指向新表單。
+  **需求 2（datalist 級聯建議）**：新增兩個衍生清單 `newCityOptions`／`newDistrictOptions`
+  （沿用篩選列同套邏輯，改以 `newCountry`／`newCity` 為 key、`getLocationOptions` 不改），
+  國家／都市／區域三個 `TextInput` 各加 `list=` 指向獨立 `<datalist>`（id `new-countries`／
+  `new-cities`／`new-districts`，避開篩選列的 `fl-*`）；國家建議 `opts.countries`、都市依
+  `newCountry` 級聯、區域依 `newCountry`+`newCity` 級聯（與篩選列一致——選到完整國家名才縮，
+  只給建議不自動代入）。`cells.tsx` 的 `TextInput` 早已支援 `list` prop，未改。無 schema／
+  `src/lib` 純函式／CSV／備份變動；純 UI／流程調整、無新測試；既有 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 

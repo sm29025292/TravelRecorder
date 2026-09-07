@@ -122,6 +122,11 @@ export default function Attractions() {
   const [newCity, setNewCity] = useState('')
   const [newDistrict, setNewDistrict] = useState('')
   const [newType, setNewType] = useState<Attraction['type']>('')
+  const [newName, setNewName] = useState('')
+  const [newAddress, setNewAddress] = useState('')
+  const [newUrl, setNewUrl] = useState('')
+  const [newNotes, setNewNotes] = useState('')
+  const [newPriority, setNewPriority] = useState(0)
   const [msg, setMsg] = useState('')
 
   // 篩選狀態
@@ -157,19 +162,27 @@ export default function Attractions() {
   }
 
   async function addRow() {
+    if (!newName.trim()) return
     const a: Attraction = {
       id: newId(),
       country: newCountry.trim(),
       city: newCity.trim(),
       district: newDistrict.trim(),
-      name: '',
-      address: '',
-      url: '',
-      notes: '',
-      priority: 0,
+      name: newName.trim(),
+      address: newAddress.trim(),
+      url: newUrl.trim(),
+      notes: newNotes.trim(),
+      priority: newPriority,
       type: newType,
     }
     await db.attractions.add(a)
+    // 保留國家／都市／區域（方便連續新增同區景點），清空其餘欄位
+    setNewName('')
+    setNewType('')
+    setNewAddress('')
+    setNewUrl('')
+    setNewNotes('')
+    setNewPriority(0)
   }
 
   const update = (id: string, patch: Partial<Attraction>) => db.attractions.update(id, patch)
@@ -215,6 +228,19 @@ export default function Attractions() {
   const districtOptions =
     fCountry || fCity
       ? (opts.districtsByCityKey.get(`${fCountry}${SEP}${fCity}`) ?? [])
+      : [...new Set(allAttractions.map((a) => a.district).filter(Boolean))].sort((a, b) =>
+          a.localeCompare(b, 'zh-Hant'),
+        )
+
+  // 新增表單的 datalist 級聯建議（沿用篩選列同套邏輯，改以 new* 為 key）
+  const newCityOptions = newCountry
+    ? (opts.citiesByCountry.get(newCountry) ?? [])
+    : [...new Set(allAttractions.map((a) => a.city).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, 'zh-Hant'),
+      )
+  const newDistrictOptions =
+    newCountry || newCity
+      ? (opts.districtsByCityKey.get(`${newCountry}${SEP}${newCity}`) ?? [])
       : [...new Set(allAttractions.map((a) => a.district).filter(Boolean))].sort((a, b) =>
           a.localeCompare(b, 'zh-Hant'),
         )
@@ -398,7 +424,7 @@ export default function Attractions() {
 
   return (
     <div className="space-y-4">
-      {/* 頁頭 + 新增工具列 */}
+      {/* 頁頭 + 工具列 */}
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <h1 className="text-xl font-bold">景點庫</h1>
@@ -407,33 +433,6 @@ export default function Attractions() {
           </p>
         </div>
         <div className="ml-auto flex flex-wrap items-end gap-2">
-          <label className="text-sm">
-            <span className="mb-1 block text-gray-600">國家</span>
-            <TextInput value={newCountry} placeholder="例：日本" onChange={setNewCountry} className="w-24" />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-gray-600">都市</span>
-            <TextInput value={newCity} placeholder="例：大阪" onChange={setNewCity} className="w-24" />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-gray-600">區域</span>
-            <TextInput value={newDistrict} placeholder="例：心齋橋" onChange={setNewDistrict} className="w-24" />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-gray-600">類型</span>
-            <Select
-              value={newType}
-              onChange={(v) => setNewType(v as Attraction['type'])}
-              className="w-24"
-            >
-              <option value="">未設</option>
-              {ATTRACTION_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </Select>
-          </label>
           <button
             onClick={() => fileRef.current?.click()}
             className="rounded border px-3 py-2 text-sm hover:bg-gray-50"
@@ -465,12 +464,112 @@ export default function Attractions() {
           >
             健檢
           </button>
-          <button
-            onClick={addRow}
-            className="rounded bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700"
-          >
-            + 新增景點
-          </button>
+        </div>
+      </div>
+
+      {/* 新增景點表單：填完整再按「確定新增」 */}
+      <div className="rounded-lg border bg-gray-50 px-3 py-3">
+        <div className="mb-2 text-sm font-medium text-gray-700">新增景點</div>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-gray-500">國家</span>
+            <TextInput
+              value={newCountry}
+              placeholder="例：日本"
+              onChange={setNewCountry}
+              list="new-countries"
+              className="w-28"
+            />
+            <datalist id="new-countries">
+              {opts.countries.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-gray-500">都市</span>
+            <TextInput
+              value={newCity}
+              placeholder="例：大阪"
+              onChange={setNewCity}
+              list="new-cities"
+              className="w-28"
+            />
+            <datalist id="new-cities">
+              {newCityOptions.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-gray-500">區域</span>
+            <TextInput
+              value={newDistrict}
+              placeholder="例：心齋橋"
+              onChange={setNewDistrict}
+              list="new-districts"
+              className="w-28"
+            />
+            <datalist id="new-districts">
+              {newDistrictOptions.map((d) => (
+                <option key={d} value={d} />
+              ))}
+            </datalist>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-gray-500">類型</span>
+            <Select
+              value={newType}
+              onChange={(v) => setNewType(v as Attraction['type'])}
+              className="w-24"
+            >
+              <option value="">未設</option>
+              {ATTRACTION_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-gray-500">景點名稱</span>
+            <TextInput
+              value={newName}
+              placeholder="必填"
+              onChange={setNewName}
+              className="w-40"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-gray-500">詳細地址</span>
+            <TextInput value={newAddress} onChange={setNewAddress} className="w-48" />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-gray-500">網址</span>
+            <TextInput value={newUrl} placeholder="https://" onChange={setNewUrl} className="w-48" />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-gray-500">備註</span>
+            <TextInput value={newNotes} onChange={setNewNotes} className="w-40" />
+          </label>
+          <div className="text-sm">
+            <span className="mb-1 block text-xs text-gray-500">優先度</span>
+            <div className="py-1">
+              <PriorityStars value={newPriority} onChange={setNewPriority} />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={addRow}
+              disabled={!newName.trim()}
+              className="rounded bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+            >
+              確定新增
+            </button>
+            {!newName.trim() && (
+              <span className="text-xs text-gray-400">請先輸入景點名稱</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -576,7 +675,7 @@ export default function Attractions() {
 
       {allAttractions.length === 0 && (
         <p className="rounded border border-dashed p-8 text-center text-gray-500">
-          尚無景點。在右上輸入國家／都市／區域後按「新增景點」。
+          尚無景點。在上方「新增景點」表單填好景點名稱等資料後按「確定新增」。
         </p>
       )}
 
