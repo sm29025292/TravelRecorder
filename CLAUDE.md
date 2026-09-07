@@ -64,7 +64,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 | `src/components/AttractionPicker.tsx` | 行程用的景點三段式選擇器（T16 類型／都市內建篩選、國家由旅程鎖死；optgroup label 隨篩選狀態自組；含「目前選取」保底 optgroup 讓 `<select>` 永不空白；T29 起輸出三個 `<Td>` 作為表格獨立欄位「類型／都市／景點」） |
 | `src/components/MemberSelect.tsx` | 付錢者下拉（成員清單） |
 | `src/components/ParticipantsPicker.tsx` | 分攤對象勾選 popover（空陣列＝全部均分） |
-| `src/pages/TripList.tsx` | 旅程清單（新增/開啟/刪除，刪除連帶清各表；新增以對話框選「全空／從既有旅程複製」，複製帶入基本設定＋同行者＋行李、日期留空） |
+| `src/pages/TripList.tsx` | 旅程清單（新增/開啟/刪除，刪除連帶清各表；新增以對話框輸入名稱＋出發/回程日期（T41 必填、回程≥出發）、選來源「全新空白／複製既有旅程」（複製帶入基本設定＋同行者＋行李）、可勾選帶入常用花費項目（T42，`DEFAULT_EXPENSE_ITEMS`、台幣）） |
 | `src/pages/TripDetail.tsx` | 單一旅程，分頁：總覽 / 花費 / 行程 / 分帳 / 行李 |
 | `src/components/trip/{OverviewTab,ExpensesTab,ItineraryTab,SettlementTab,PackingTab}.tsx` | 五個分頁內容 |
 | `src/pages/Attractions.tsx` | 景點庫（T4 樹狀階層：國家→都市→區域可摺疊，節點「編輯」以 modal 批次改子樹位置；表格移除國家/都市/區域欄，改以「搬移」按鈕移動單列；級聯篩選＋類型 CRUD、「匯入 CSV」） |
@@ -600,6 +600,21 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   「全空的」即真正全空、不再自動帶行李（符合擁有者「一個全空的」需求）。凍結區（分帳/成員、行李）
   的寫入沿 T21 慣例（新增旅程時寫 members／packing 為明文允許）。無 schema／`src/lib` 純函式／備份格式變動；
   純 UI／流程調整、無新測試；既有 155 綠、build 通過。
+- ✅ **T41＋T42 新增旅程對話框：名稱/日期必填＋常用花費預設帶入**（2026-09-07）：全部在
+  `src/pages/TripList.tsx`。**T41**：新增對話框加旅程名稱（原生 `<input>`）＋出發／回程日期
+  （原生 `<input type="date">`）三欄，**皆必填**；`canCreate = name.trim() 非空 && startDate && endDate
+  && !(endDate < startDate)`（`YYYY-MM-DD` 字串字典序比較），不成立則「建立旅程」按鈕 disabled，
+  另有灰字提示「回程需晚於或等於出發」、`dateInvalid` 時轉紅。此覆蓋 T40 原「日期留空待填」——
+  改為建立時就輸入。全空路徑名稱預設空；選某來源旅程時 `onSourceChange` 預填「（來源名）（複製）」（可改）。
+  對話框改為單一「建立旅程」按鈕＋來源 `<select>`（第一項「全新空白旅程」value `''`，其餘為既有旅程），
+  取代 T40 的雙按鈕；`openAdd` 一律開對話框（不再於無旅程時直接建立，因名稱/日期需輸入）。
+  **T42**：檔頂常數 `DEFAULT_EXPENSE_ITEMS`（機票（去程）／機票（回程）／飯店／交通（機場接駁）／
+  換匯／保險）；對話框加勾選「帶入常用花費項目」，`seedExpenses` 預設 `true`；`createTrip` 於同一
+  `db.transaction('rw', db.trips, db.members, db.packing, db.expenses, ...)`（比 T40 多 `db.expenses`）
+  在建立 trip（＋複製 members/packing）後，若勾起則 `bulkAdd` 這 6 筆 `ExpenseItem`（`currency:'TWD'`、
+  `amount`/`fee` 0、`sort` 1..6、其餘欄位空、`payerId`/`participantIds` 留空＝全體均分），未勾則不帶。
+  對話框名稱/日期用原生 input＋local state（非 `cells.tsx` 聚焦緩衝——按「建立」才寫 DB，同 T35 popover 例外）。
+  無 schema／`src/lib` 純函式／備份格式變動；純 UI／流程調整、無新測試；既有 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
