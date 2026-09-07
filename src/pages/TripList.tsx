@@ -36,11 +36,9 @@ export default function TripList() {
     setAdding(true)
   }
 
-  // 選來源旅程時，若切到某既有旅程則預填「（來源名）（複製）」名稱；切回全新空白不動名稱。
+  // 切換來源只記住選擇，名稱一律由使用者在對話框自行輸入（不論全新空白或複製皆同）。
   function onSourceChange(id: string) {
     setCopyFromId(id)
-    const source = trips?.find((t) => t.id === id)
-    if (source) setName(`${source.name || '旅程'}（複製）`)
   }
 
   const dateInvalid = !!startDate && !!endDate && endDate < startDate
