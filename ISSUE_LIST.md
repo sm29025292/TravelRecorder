@@ -71,6 +71,7 @@
 | T40 | 新增旅程可選「全空／從既有旅程複製」 | P2 | ★★ | 無（凍結區局部解凍） | ✅ 2026-09-07 |
 | T41 | 新增旅程時強制先輸入旅程名稱與日期 | P2 | ★ | T40（同對話框） | ✅ 2026-09-07 |
 | T42 | 新旅程花費預設帶入常用項目（機票×2／飯店／接駁／換匯／保險） | P2 | ★★ | T40（同建立流程） | ✅ 2026-09-07 |
+| T43 | 景點庫新增改「完整表單＋確定」＋輸入框 datalist 級聯建議 | P2 | ★★ | 無 | ⬜ 規格已定、實作擱置 |
 
 ## 共通守則（每個任務都適用）
 
@@ -595,6 +596,61 @@ T21 行李繼承（在 `TripList.tsx`）一律不動。
 
 **驗收**：build／既有測試全綠；手動：勾選狀態下新建旅程（全空與複製）後花費分頁即出現這 6 筆
 台幣空白項目、順序正確、可正常編輯與刪除；取消勾選則新旅程花費為空；台幣小計/總計/平均照常運作。
+
+---
+
+## T43 景點庫新增改「完整表單＋確定」＋輸入框 datalist 級聯建議（P2・★★・依賴：無）
+
+> 狀態：**規格已定、實作擱置**（2026-09-07 與擁有者討論定案，先歸檔清單、暫不實作）。
+
+**背景／目標**：目前景點庫的新增流程有兩個痛點：
+1. 右上新增區只帶「國家／都市／區域／類型」，按「＋新增景點」會**立刻**在樹裡插入一列**空白**景點，
+   使用者得再到樹狀表格裡就地補景點名／地址／網址／備註／優先度——資料還沒填完就已進資料庫。
+2. 新增區的國家／都市／區域是**純文字框、無建議**（只有下方「篩選」列才有 datalist 級聯建議）。
+
+擁有者拍板（2026-09-07）：
+- **新增改「填完整再確定」**：新增區做成完整表單（含景點名／地址／網址／備註／優先度），
+  全部填好按「確定新增」才寫入，不再先插空白列。**景點名稱必填**（空白時按鈕 disabled）。
+  成功後**保留國家／都市／區域**（方便連續新增同區景點）、清空其餘欄位。
+- **三個輸入框加 datalist 級聯建議**：國家／都市／區域比照「篩選」列跳出景點庫既有值，
+  國家→都市→區域級聯（沿用既有 `getLocationOptions`）。**只給建議清單、不自動代入**。
+
+**性質**：純 UI／流程調整，**單一檔案** `src/pages/Attractions.tsx`。
+無 schema、無 `src/lib` 純函式、無 CSV／備份變動。
+
+**規格**（全部在 `src/pages/Attractions.tsx`）：
+
+**A. 新增區改成完整表單（需求 1）**
+1. **State**：既有 `newCountry / newCity / newDistrict / newType` 補上
+   `newName / newAddress / newUrl / newNotes`（string，預設 `''`）與 `newPriority`（number，預設 `0`）。
+2. **改寫 `addRow()`**（約 L159–173）：
+   - 開頭防呆 `if (!newName.trim()) return`。
+   - `name / address / url / notes / priority` 由硬寫空字串／0 改為寫入對應 state（`name` 記得 `.trim()`）。
+   - `db.attractions.add(a)` 之後清空 `newName / newType / newAddress / newUrl / newNotes / newPriority`，
+     **保留** `newCountry / newCity / newDistrict`。
+3. **改寫右上新增區版面**（約 L409–474）：在「國家／都市／區域／類型」後補
+   「景點名稱／地址／網址／備註／優先度」欄位，一律沿用 `cells.tsx`（`TextInput`；優先度用既有 `PriorityStars`）。
+   欄位變多，新增區由單排 flex 改為一個小區塊（標題「新增景點」＋欄位換行排列），維持頁面上方原位置。
+   「＋新增景點」按鈕文字改「確定新增」，`newName.trim()` 為空時 `disabled`，旁附灰字「請先輸入景點名稱」。
+   「匯入 CSV／整理重複／健檢」三顆按鈕位置與行為**不動**。
+
+**B. 三個輸入框加 datalist 級聯建議（需求 2）**
+4. 國家／都市／區域三個 `TextInput` 加 `list={...}` 指向三個 `<datalist>`，用獨立 id
+   （例 `new-countries / new-cities / new-districts`，避開篩選列的 `fl-*`）：
+   - 國家：`opts.countries`
+   - 都市：`newCountry ? (opts.citiesByCountry.get(newCountry) ?? []) : 全庫都市去重＋zh-Hant 排序`
+   - 區域：`(newCountry || newCity) ? (opts.districtsByCityKey.get(\`${newCountry}${SEP}${newCity}\`) ?? []) : 全庫區域去重＋zh-Hant 排序`
+   - 級聯行為與現有「篩選」列**完全一致**（`getLocationOptions` 既有、不改）；只給建議、不自動代入。
+   - `TextInput` 已支援 `list` prop（見 `cells.tsx`），**不需改 `cells.tsx`**。
+
+**不要做**：不動樹狀表格既有景點的就地編輯／搬移／刪除防護（T5）／已去過 ✓（T15）／
+網址欄 LinkField（T36）；不動篩選列、`DedupePanel`、`HealthPanel`、`getLocationOptions`、
+資料模型、備份、CSV 匯入、其他分頁；不做「打半個字都市即時縮」（沿用現有「選到完整國家名才級聯」的一致行為）。
+
+**驗收**：`npm run test`（155）與 `npm run build`（含 `tsc --noEmit`）全綠；手動——
+填完整表單按「確定新增」→ 樹裡直接出現已填好的景點（非空白列）；景點名空白時按鈕不可按；
+新增成功後國家/都市/區域保留、其餘清空可續新增；國家框打「日」跳「日本」建議，
+選「日本」後都市框跳該國家既有都市（如大阪）、區域框跟著級聯。
 
 ---
 
