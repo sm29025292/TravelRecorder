@@ -64,7 +64,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 | `src/components/AttractionPicker.tsx` | 行程用的景點三段式選擇器（T16 類型／都市內建篩選、國家由旅程鎖死；optgroup label 隨篩選狀態自組；含「目前選取」保底 optgroup 讓 `<select>` 永不空白；T29 起輸出三個 `<Td>` 作為表格獨立欄位「類型／都市／景點」） |
 | `src/components/MemberSelect.tsx` | 付錢者下拉（成員清單） |
 | `src/components/ParticipantsPicker.tsx` | 分攤對象勾選 popover（空陣列＝全部均分） |
-| `src/pages/TripList.tsx` | 旅程清單（新增/開啟/刪除，刪除連帶清各表） |
+| `src/pages/TripList.tsx` | 旅程清單（新增/開啟/刪除，刪除連帶清各表；新增以對話框選「全空／從既有旅程複製」，複製帶入基本設定＋同行者＋行李、日期留空） |
 | `src/pages/TripDetail.tsx` | 單一旅程，分頁：總覽 / 花費 / 行程 / 分帳 / 行李 |
 | `src/components/trip/{OverviewTab,ExpensesTab,ItineraryTab,SettlementTab,PackingTab}.tsx` | 五個分頁內容 |
 | `src/pages/Attractions.tsx` | 景點庫（T4 樹狀階層：國家→都市→區域可摺疊，節點「編輯」以 modal 批次改子樹位置；表格移除國家/都市/區域欄，改以「搬移」按鈕移動單列；級聯篩選＋類型 CRUD、「匯入 CSV」） |
@@ -586,6 +586,20 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   檔尾。React import 由原本無 React 一行擴充為 `import { useState, type ReactNode } from 'react'`。
   凍結區解凍範圍嚴守規格：僅 `PackingTab.tsx` 的版面層——`addRow`／`update`／`remove`／T21 行李
   繼承邏輯（在 `TripList.tsx`）一律不動。無 schema／`src/lib` 純函式變動；純 UI 任務；全 155 綠、build 通過。
+- ✅ **新增旅程可選「全空／從既有旅程複製」**（2026-09-07）：`src/pages/TripList.tsx` 把原本點「新增旅程」
+  即刻建立的流程改為先開對話框（`adding`／`copyFromId` 兩個 `useState`）：頂部「建立全新空白旅程」按鈕、
+  分隔線、下方「來源旅程」`<select>`＋「複製並建立」（未選來源時 disabled）。`addTrip` 重構為
+  `createTrip(source: Trip | null)`——`source` 為 `null` → 沿用原空白預設值（JPY/日元/0.21/2 人）；為某 `Trip`
+  → 複製 `country`／`city`／`region`／`currencyCode`／`currencyLabel`／`exchangeRate`／`peopleCount`，
+  `name` 加「（複製）」後綴、`startDate`／`endDate` 一律留空待填（擁有者拍板；行程未複製故無日期對齊問題）。
+  同一 `db.transaction('rw', db.trips, db.members, db.packing, ...)` 內 `db.trips.add` 後，`source` 存在時
+  以 `where('tripId').equals(source.id).sortBy('sort')` 讀來源 members／packing 逐筆換發 `id`、改指新 `tripId`
+  （packing 另 `checked: false` 歸零）後 `bulkAdd`。**不複製逐日行程（itinerary）與花費（expenses，歷史記帳）**。
+  `openAdd()`：無既有旅程時（`!trips || trips.length === 0`）跳過對話框直接建空白旅程。
+  ⚠️ **此變更取代 T21 的「自動繼承上一趟行李」**——行李改為「從既有旅程複製」時才一併帶入（同行者亦然），
+  「全空的」即真正全空、不再自動帶行李（符合擁有者「一個全空的」需求）。凍結區（分帳/成員、行李）
+  的寫入沿 T21 慣例（新增旅程時寫 members／packing 為明文允許）。無 schema／`src/lib` 純函式／備份格式變動；
+  純 UI／流程調整、無新測試；既有 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
