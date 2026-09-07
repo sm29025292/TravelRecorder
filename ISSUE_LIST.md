@@ -58,7 +58,7 @@
 | T32 | 花費頁手機卡片式檢視 | ✅ 2026-07-15 |
 | T33 | 健檢擴充：成員孤兒參照 | ✅ 2026-07-15 |
 
-### 進行中（T34–T39，表列順序＝建議施工順序）
+### 進行中（T34–T40，表列順序＝建議施工順序）
 
 | # | 任務 | 優先 | 難度 | 依賴 | 狀態 |
 |---|------|------|------|------|------|
@@ -68,6 +68,7 @@
 | T37 | 行程手機卡片摘要改版（金額→備註＋連結） | P1 | ★★ | T35（同檔＋用到連結顯示） | ✅ 2026-07-18 |
 | T38 | 分帳頁：同行者手機卡片＋結餘表壓縮＋護照名 placeholder 移除 | P2 | ★★ | 無（凍結區局部解凍） | ✅ 2026-07-19 |
 | T39 | 行李頁手機卡片 | P2 | ★★ | 無（凍結區局部解凍） | ✅ 2026-07-19 |
+| T40 | 新增旅程可選「全空／從既有旅程複製」 | P2 | ★★ | 無（凍結區局部解凍） | ✅ 2026-09-07 |
 
 ## 共通守則（每個任務都適用）
 
@@ -474,6 +475,48 @@ T21 行李繼承（在 `TripList.tsx`）一律不動。
 **驗收**：build 全綠、既有測試全綠；手動（390px 寬）：行李頁**無橫向捲動**；
 收合狀態直接點勾選框可打勾／取消**且卡片不展開**，項目名即時劃線；
 點列其他處展開可編輯；新增一列自動展開；「已勾選 X / Y」即時更新；桌面寬度下與改版前無異。
+
+---
+
+## T40 新增旅程可選「全空／從既有旅程複製」（P2・★★・依賴：無；凍結區局部解凍）✅ 2026-09-07
+
+> ⚠️ 此任務為擁有者臨時提出、直接實作後補記歸檔（非第四輪原規劃）。已完成並推送
+> （分支 `claude/journey-copy-or-new-6t06u2`、PR #51）。此段為事後規格紀錄。
+
+**背景／目標**：新增旅程時，除了「全新空白旅程」外，希望能**選一個舊旅程當範本複製**，
+省去每次重設國家／幣別、重打同行者、重列行李。擁有者拍板（2026-09-07）：
+- 複製範圍＝**旅程基本設定＋同行者名單＋行李清單**；
+- **不複製**逐日行程（itinerary）與花費（expenses——花費是歷史記帳）；
+- 出發／回程**日期一律留空待填**（不帶來源日期）。
+
+**凍結區解凍範圍（僅此）**：`TripList.tsx` 新增旅程流程——允許在建立時寫入 members／packing
+（沿 T21 慣例，T21 本就明文允許 `TripList` 寫 packing；本任務再加 members）。
+`SettlementTab.tsx`／`PackingTab.tsx`／`settle`／`MemberSelect`／`ParticipantsPicker` 一律不動。
+
+**規格**（全部在 `src/pages/TripList.tsx`）：
+1. 點「＋ 新增旅程」改為先開對話框（新 `adding`／`copyFromId` 兩個 `useState`）：
+   頂部「建立全新空白旅程」按鈕、分隔線「或從既有旅程複製」、下方「來源旅程」`<select>`
+   （列出既有旅程 name＋startDate）＋「複製並建立」按鈕（未選來源時 `disabled`）＋「取消」。
+   modal 版型沿用專案既有（`fixed inset-0 z-50 ... bg-black/40`、內層 `max-w-md ... stopPropagation`）。
+2. `addTrip` 重構為 `createTrip(source: Trip | null)`：
+   - `source === null`：沿用原空白預設值（`name:'新旅程'`、country/city/region 空、
+     JPY/日元/匯率 0.21/peopleCount 2、日期空）。
+   - `source` 為某 `Trip`：複製 `country`／`city`／`region`／`currencyCode`／`currencyLabel`／
+     `exchangeRate`／`peopleCount`；`name` 加「（複製）」後綴；`startDate`／`endDate` 一律 `''`。
+   - 同一 `db.transaction('rw', db.trips, db.members, db.packing, ...)`：`db.trips.add(trip)` 後，
+     `source` 存在時各以 `where('tripId').equals(source.id).sortBy('sort')` 讀 members／packing，
+     逐筆換發 `id`、改指新 `tripId`（packing 另 `checked: false` 歸零）後 `bulkAdd`。
+   - 建立後 `navigate(/trip/新id)`。
+3. `openAdd()`：無既有旅程時（`!trips || trips.length === 0`）跳過對話框、直接建空白旅程。
+
+**⚠️ 取代 T21**：此變更**取代 T21 的「自動繼承上一趟行李」**——行李（與同行者）改為
+「選擇複製來源」時才帶入，「全空的」即真正全空、不再自動帶行李（符合擁有者「一個全空的」需求）。
+
+**不要做**：不複製 itinerary／expenses；不帶來源日期；不做「選擇性勾選要複製哪些項目」的細部 UI
+（範圍已由擁有者拍板固定）；不升 Dexie、不動 schema／備份格式。
+
+**驗收**：build 全綠、既有 155 綠測試不變；手動：無旅程時點新增直接建空白；有旅程時點新增跳對話框，
+選來源複製後新旅程帶到設定／同行者／行李（行李未勾選）、行程與花費為空、日期為空、名稱含「（複製）」。
 
 ---
 
