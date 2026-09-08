@@ -26,6 +26,7 @@ import {
 import { visitedAttractionIds } from '../../lib/visited'
 import { itineraryToText } from '../../lib/exportItinerary'
 import { parseLink } from '../../lib/link'
+import { CURRENCY_SHORT_LABEL } from '../../lib/currency'
 
 export default function ItineraryTab({ trip }: { trip: Trip }) {
   const items = useLiveQuery(
@@ -93,7 +94,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
   }
 
   const list = items ?? []
-  const cur = trip.currencyLabel || trip.currencyCode
+  const cur = CURRENCY_SHORT_LABEL[trip.currencyCode] ?? (trip.currencyLabel || trip.currencyCode)
   const groups = groupItineraryByDate(list, {
     startDate: trip.startDate,
     endDate: trip.endDate,

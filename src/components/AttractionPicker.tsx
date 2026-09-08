@@ -137,7 +137,7 @@ export default function AttractionPicker({
 
   return (
     <>
-      <Td className="w-20">{typeSelect}</Td>
+      <Td className="w-[4.5rem]">{typeSelect}</Td>
       <Td className="w-24">{citySelect}</Td>
       <Td className="min-w-[12rem]">{attractionSelect}</Td>
     </>

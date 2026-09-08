@@ -709,6 +709,22 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   T44 完成時的 322px 縮小到 162px（橫向捲動範圍減半，仍非零捲動，13 欄含三段式景點選擇器
   ＋連結欄，與 T44 評估一致）。未動花費頁／`variant='stack'`（手機卡片）／`renderCard`
   （T37 手機摘要）；全 155 綠、build 通過。
+- ✅ **花費幣別／行程類型欄再縮寬＋行程金額標題改短幣別符號**（2026-09-08，T45 後續小調整）：
+  Tailwind 預設 spacing scale 沒有 `w-18`，改用等值的任意值 class `w-[4.5rem]`（18×0.25rem=72px）
+  ——`ExpensesTab.tsx` 幣別 `<Select>` 的 `<Td>` 由 `w-20`（80px）改 `w-[4.5rem]`；
+  `AttractionPicker.tsx`（`variant='cells'`）類型 `<Td>` 同樣由 `w-20` 改 `w-[4.5rem]`
+  （`variant='stack'` 手機卡片版不受影響）。`src/lib/currency.ts` 新增
+  `CURRENCY_SHORT_LABEL: Record<string,string>`（`JPY:'円'`／`USD:'US'`／`TWD:'元'`／`HKD:'HK'`，
+  只收錄擁有者明確要求的四種、其餘幣別無對照）；`ItineraryTab.tsx` 的 `cur` 計算改為
+  `CURRENCY_SHORT_LABEL[trip.currencyCode] ?? (trip.currencyLabel || trip.currencyCode)`
+  ——單一變數牽動行程頁全部 8 處用到 `cur` 的地方（桌面表頭「交通(円)／花費(円)／小計(円)」、
+  手機卡片欄位標籤與小計行、當日小計列、頁尾總計列），一次到位；`ExpensesTab.tsx`／
+  `OverviewTab.tsx`／`SyncDialog.tsx` 等其他頁面顯示的仍是完整 `currencyLabel`（如「日元」），
+  未受影響——只有行程頁的金額欄標題改用短符號。用 Playwright 實測（1400px）確認
+  `交通(円)`／`花費(円)`／`小計(円)` 正確顯示、花費頁幣別欄「台幣」與行程頁類型欄「全部」
+  皆不裁切、花費頁整行仍剛好落在容器可用寬度 1118px 內（零捲動，T44 起的既有結論不變）。
+  無 schema／`src/lib` 測試新增（`CURRENCY_SHORT_LABEL` 是純資料表、無邏輯可測）；
+  全 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
