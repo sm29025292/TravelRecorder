@@ -724,6 +724,21 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   `交通JPY`／`花費JPY`／`小計JPY` 正確顯示、花費頁幣別欄「台幣」與行程頁類型欄「全部」
   皆不裁切、花費頁整行仍剛好落在容器可用寬度 1118px 內（零捲動，T44 起的既有結論不變）。
   無 schema／`src/lib` 測試變動；全 155 綠、build 通過。
+- ✅ **景點庫新增表單「網址」欄拆成名稱＋連結兩欄**（2026-09-08）：`src/pages/Attractions.tsx`
+  的「新增景點」表單原本「網址」只有單一 `TextInput`（存裸網址）；改為與 `LinkField`（T35）
+  同款「名稱＋連結」兩欄輸入——新增 state `newUrlName`（獨立於既有 `newUrl`），版面用兩個
+  固定寬容器（`w-24 shrink-0` 放名稱、`min-w-0 flex-1` 放連結）包住各自的 `TextInput`
+  （**不能**直接把 `w-24`／`flex-1` 加在 `TextInput` 的 `className` 上——`cells.tsx` 的
+  `TextLike` 已內建 `w-full`，與外加的寬度 class 在同一個 `<input>` 上因 Tailwind 樣式表
+  順序而互相蓋過，導致名稱欄搶走全寬、連結欄被擠到幾乎看不見；改用外層容器控制寬度即可避開）；
+  `addRow` 存檔時呼叫既有純函式 `serializeLink(newUrlName, newUrl)`（自 `../lib/link` import）
+  組成單一字串寫入 `Attraction.url`——名稱空只存裸網址、連結空整欄存空字串、兩者皆有才組
+  `[名稱](網址)`，與 `LinkField` 完全同一套編碼，新增成功後景點列即以可點超連結顯示
+  （沿用既有 `LinkField` 顯示元件，未改）；新增成功後 `newUrlName`／`newUrl` 一併清空
+  （國家/都市/區域仍保留，沿用既有連續新增慣例）。無 schema／`src/lib` 純函式變動（`link.ts`
+  的 `parseLink`／`serializeLink`／`linkDisplayText` 皆未改）；用 Playwright 實測新增流程
+  （填「官網」＋`https://example.com`）確認存檔後樹狀列表正確顯示可點連結、href 正確。
+  全 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
