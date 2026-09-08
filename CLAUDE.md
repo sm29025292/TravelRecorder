@@ -681,6 +681,21 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   景點名稱（1/5，無 span）／詳細地址（`sm:col-span-2`＝2/5）／網址（`sm:col-span-2`＝2/5）；
   第三排 備註（`sm:col-span-2`＝2/5）／優先度（`sm:col-span-3`＝3/5）。全 155 綠、build 通過；
   Playwright 重新截圖確認三項修正、新增景點功能重測通過。
+  **第三輪修正**（2026-09-08，擁有者再看花費頁截圖回饋四點，核心訴求「整行不要橫向捲動」）：
+  ①`TIME_COL_CLASS` 再由 `'w-24'` 縮到 `'w-20'`（花費/行程共用）；②幣別欄 `w-24→w-20`；
+  ③金額／手續費／小計三欄同尺寸縮小（`w-20`／`w-20`／`w-16`，小計是純文字顯示無輸入框
+  內距與邊框開銷、可比另兩欄更窄）；④發現 `App.tsx` 的 `max-w-6xl` 外層容器扣 padding 後
+  可用寬度固定約 1118px（與瀏覽器視窗寬度無關，寬度只取決於容器與欄位總寬），
+  ①②③縮小後仍超出約 60px，用 Playwright 量測後在付錢欄（`MemberSelect` 本身已寫死
+  `min-w-[5rem]`=80px 安全下限，`Td` 改 `w-24→w-20`＝80px 剛好貼齊）與備註欄
+  （`min-w-[8rem]→min-w-[7rem]`）補足縮減量；**項目（景點名稱）欄維持原 `min-w-[8rem]`
+  不變**——曾嘗試一併縮到 `min-w-[7rem]`，但發現 T42 預設花費項目「交通（機場接駁）」
+  （8 個全形字）會被視覺裁切（資料不遺失，只是顯示不全），且此欄非本輪要求範圍，故改
+  在別處找回寬度、不引入新的顯示缺陷。最終花費頁 `min-w-[84rem]→min-w-[69rem]`，
+  Playwright 於 1280/1366/1400px 三種視窗寬度確認 `scrollWidth===clientWidth`（不需橫向
+  捲動）；行程頁欄位較多（13 欄），本輪未強求零捲動，`min-w-[96rem]` 隨時間欄同比例
+  降為 `min-w-[90rem]`（避免縮時間欄後備註/景點欄被意外撐寬，但保留其原有橫向捲動）。
+  全 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 

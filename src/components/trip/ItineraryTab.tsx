@@ -332,7 +332,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
       {groups.length === 0 ? (
         <div className="rounded-lg border bg-white">
           <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full min-w-[96rem] text-sm">
+            <table className="w-full min-w-[90rem] text-sm">
               {renderHead()}
               <tbody>
                 <tr>
@@ -387,7 +387,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
                   </div>
                 </div>
                 <div className="hidden overflow-x-auto sm:block">
-                  <table className="w-full min-w-[96rem] text-sm">
+                  <table className="w-full min-w-[90rem] text-sm">
                     {renderHead()}
                     <tbody>{g.items.map(renderRow)}</tbody>
                   </table>
