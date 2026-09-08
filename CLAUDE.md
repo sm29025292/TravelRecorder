@@ -803,6 +803,15 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 ## 10. 開發注意
 
 - 開發在指定的功能分支進行；commit 後推送。**未經同意不要 push 到別的分支、不要開 PR。**
+- **兩人共同開發，新需求／新任務直接記錄到 `main` 的 `ISSUE_LIST.md`，不要寫在某個功能分支裡**：
+  每個 session 各自在獨立分支工作，若新需求只寫進某條分支，合併前另一人在 `main` 完全看不到、
+  分支若一直沒合併需求還會遺失。**純粹新增/調整任務清單本身**（進度表加一列、補任務規格；
+  不改 App 程式碼、不必跑 `npm run test`/`npm run build`）視為文件變更，可**直接對 `main` commit + push**，
+  不用先開功能分支等 PR 合併：GitHub 網頁最快（開 `ISSUE_LIST.md` → ✏️ 編輯 → 選「Commit directly
+  to the `main` branch」）；本機則 `git checkout main && git pull && 編輯 → git commit && git push origin main`。
+  若 `main` 設了分支保護擋直接 push，退而求其次開一個只改 `ISSUE_LIST.md` 的小 PR、開了立刻自行合併
+  （純文件、不影響程式碼與部署，不必等 CI）。**實作**該任務的程式碼則仍照上一條規則、在該任務指定的
+  功能分支進行，完成後才 push 到那條分支。
 - **Git commit message 一律用繁體中文撰寫**，讓維護者一眼看出這個 commit 做了什麼；
   技術名詞（函式名、檔名、套件名、指令、型別、CLI flag 等）保留英文原樣。
   第一行為簡短標題（建議 50 字內、不加句號），需要細節時空一行再寫本文說明「為什麼」而非「做了什麼」。
