@@ -754,6 +754,50 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   不變，`ItineraryTab.tsx`／景點庫兩處呼叫端零改動。用 Playwright 實測：新增兩筆同都市景點、
   點第一列 ✎ 開啟 popover，「名稱」「連結」兩欄與「儲存」按鈕完整可見不再被裁切；輸入文字
   不會誤觸發外部點擊關閉；儲存後連結正確更新為新名稱＋原網址。全 155 綠、build 通過。
+- ✅ **Code review 修正：LinkField popover 定位／手機版面溢出／幣別 fallback**（2026-09-08）：
+  對 T44／T45／景點庫網址拆欄那批版面 commit 做 code review 後修掉 6 個問題，皆為 UI／版面層，
+  無 schema、無 `src/lib` 純函式變動。①**`LinkField.tsx` popover 只夾左右沒夾上下**：靠近視窗
+  底部的連結欄（例如表格最後一列）點 ✎ 後 popover 會開到畫面外，而想捲過去看又觸發關閉 →
+  那些列等於無法編輯。新增 `updatePos()` 統一算座標：左右照舊夾進視窗，**下方空間不足時翻到
+  錨點上方**（`rect.top - 4 - h`），上方也不夠則夾到視窗底部；popover 掛上後才量得到高度，
+  故用 `useLayoutEffect` 在 layout 階段補算一次（避免翻轉閃動）。②**捲動／縮放不再關閉 popover**：
+  原本 capture-phase `scroll`＋`resize` 直接 `setOpen(false)`，但編輯內容是按「儲存」才寫回，
+  關掉等於**靜默丟掉使用者已打的名稱／連結**（滑鼠滾輪誤觸、手機聚焦捲動或鍵盤彈出的 resize
+  都會中招）；改為兩個 listener 都呼叫 `updatePos` **重新定位**、維持開啟。③**`OverviewTab.tsx`
+  手機橫向溢出**：出發／回程日期＋平移日期那排與外幣三欄都是無斷點的 `grid-cols-3`，兩個原生
+  `<input type="date">`（最小內容寬約 162px，見 T44 紀錄）塞不進 360px 手機的卡片內容寬 →
+  三處 grid 一律改 `grid-cols-1 sm:grid-cols-N`（國家/都市那排 `grid-cols-2` 同樣加 `sm:` 前綴）；
+  `Field` 加 optional `labelClassName` prop，「平移日期」按鈕的空白 label 改 `hidden sm:block`
+  （只為桌面對齊而存在，手機單欄時不需多一行空白）。④**花費頁手機卡片日期／時間跑位**
+  （擁有者截圖回報）：`ExpensesTab.tsx` `renderCard` 展開表單把日期／時間並排在 `grid-cols-2`，
+  半格約 146px 放不下「標籤 64px＋date input 162px」→ 日期輸入框撐破格子、把「時間」標籤壓到
+  日期欄上面。改為**日期、時間各自獨佔一行**（與 `ItineraryTab` 卡片的日期同慣例）；四個分頁
+  檔尾的 local `CardField` 的欄位 `<span>` 一併補 `min-w-0`（flex 子項預設 `min-width:auto`
+  不會縮到內容寬以下，這是同類溢出的根因）。⑤**景點庫新增表單網址兩欄手機被壓扁**：名稱框
+  `w-24 shrink-0` 在手機半格內只剩約 40px 給連結框 → 容器改 `flex flex-col gap-2 sm:flex-row`、
+  名稱框改 `sm:w-24 sm:shrink-0`（手機上下堆疊、桌面維持原並排）。⑥**只填名稱沒填連結會靜默消失**：
+  `serializeLink(name, '')` 依規格回 `''`，`addRow` 接著清空兩格，但此表單沒有 `LinkField`
+  popover 那句提示 → 新增即時提示「連結留空時只有名稱不會儲存。」（`newUrlName` 有值且 `newUrl`
+  為空時才顯示，`text-amber-600`）；`serializeLink` 行為未改。⑦**`ItineraryTab.tsx` 幣別 fallback**：
+  `cur = trip.currencyCode` 改 `trip.currencyCode || trip.currencyLabel`——代碼未填時金額欄標題
+  （`交通{cur}` 等）不至於完全沒有單位，仍維持「有代碼就顯示裸代碼」的既定行為。
+  以 Playwright（Chromium）於 360／390px 手機寬與 1400px 桌面實測：三頁 `scrollWidth === clientWidth`
+  （零橫向溢出）、花費卡片日期／時間各自成行不重疊、景點庫網址兩欄手機堆疊各 164px、
+  popover 於下方空間不足時正確上翻且完整落在視窗內、編輯中捲動 popover 跟著移動且輸入值保留。
+  全 155 綠、build 通過。
+- ✅ **行程頁金額欄標題改「交通(円)／花費(円)／小計(円)」**（2026-09-08，覆蓋前一版「裸幣別代碼不加括號」）：
+  擁有者拍板改為**依總覽頁「外幣名稱」欄（`trip.currencyLabel`）判定單位**——等於 `'日元'` 顯示
+  `円`，其餘一律 `元`（含台幣、韓元、美元…與名稱留空的情況），括號回歸。
+  `src/components/trip/ItineraryTab.tsx` 新增 `const unit = trip.currencyLabel === '日元' ? '円' : '元'`
+  （與既有 `cur` 併存、各司其職）；桌面表頭三個 `<Th>` 由 `交通{cur}` 改 `交通({unit})`（花費／小計同）、
+  手機卡片欄位標籤 `` `交通${cur}` `` 改 `` `交通(${unit})` ``、卡片內小計行 `小計 {cur}` 改 `小計({unit})`。
+  **未動**：當日小計列與頁尾總計列的句子形式金額前綴（`{cur} 1,700`，仍是幣別代碼優先、
+  代碼空退回名稱），因為那是「JPY 1,700」這種前綴語序、換成「円 1,700」反而難讀；
+  `ExpensesTab`／`OverviewTab`／`SyncDialog` 顯示 `currencyLabel` 的地方一律未動。
+  以 Playwright（1400px 桌面）對四種資料實測表頭與欄寬：日元→`交通(円)`、韓元→`交通(元)`、
+  台幣→`交通(元)`、名稱留空→`交通(元)`，三欄皆 `scrollWidth === clientWidth`（無裁切，
+  交通／花費欄 80px、小計欄 64px 皆足夠）；390px 手機卡片同樣顯示 `交通(円)`／`花費(円)`／
+  `小計(円) 1,700（台幣 357）` 且無橫向溢出。全 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 

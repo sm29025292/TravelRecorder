@@ -560,14 +560,20 @@ export default function Attractions() {
           </label>
           <label className="block text-sm sm:col-span-2">
             <span className="mb-1 block text-xs text-gray-500">網址</span>
-            <div className="flex gap-2">
-              <div className="w-24 shrink-0">
+            {/* 手機一格只有半排寬，名稱固定 w-24 會把連結輸入框壓到剩幾十 px → 手機改上下堆疊 */}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="sm:w-24 sm:shrink-0">
                 <TextInput value={newUrlName} placeholder="名稱" onChange={setNewUrlName} />
               </div>
               <div className="min-w-0 flex-1">
                 <TextInput value={newUrl} placeholder="https://" onChange={setNewUrl} />
               </div>
             </div>
+            {newUrlName.trim() && !newUrl.trim() && (
+              <span className="mt-1 block text-xs text-amber-600">
+                連結留空時只有名稱不會儲存。
+              </span>
+            )}
           </label>
           {/* 第三排：備註(2/5)／優先度(3/5) */}
           <label className="block text-sm sm:col-span-2">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { parseLink, serializeLink } from '../lib/link'
 
@@ -12,6 +12,8 @@ const POPOVER_WIDTH = 256 // w-64
  * `getBoundingClientRect()`）——景點庫每個國家節點容器有 `overflow-hidden`（給摺疊圓角用），
  * 若 popover 仍在該容器內以 `absolute` 定位，往下展開的內容會被裁掉（螢幕截圖回報的 bug）；
  * portal 到 body 後完全不受任何祖先 `overflow` 影響。
+ * 定位由 `updatePos` 統一計算：左右夾在視窗內，下方空間不足時改往上翻（再不夠則夾到視窗內），
+ * 並在捲動／縮放時「重新定位」而不是關閉——編輯內容按「儲存」才寫回，關掉等於靜默丟掉輸入。
  */
 export default function LinkField({
   value,
@@ -39,17 +41,39 @@ export default function LinkField({
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open])
 
-  // 編輯中若捲動（含表格內層 overflow-x-auto）或視窗縮放，fixed 定位會跟丟錨點，直接關閉。
+  // 以錨點（欄位本身）算出 popover 座標：左右夾進視窗；下方空間不足時翻到錨點上方，
+  // 上方也不夠就夾到視窗底部——總之保證整個 popover 落在可視範圍內。
+  const updatePos = useCallback(() => {
+    const rect = wrapRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const margin = 8
+    let left = rect.right - POPOVER_WIDTH
+    left = Math.max(margin, Math.min(left, window.innerWidth - POPOVER_WIDTH - margin))
+    let top = rect.bottom + 4
+    const h = popRef.current?.offsetHeight ?? 0
+    if (h > 0 && top + h > window.innerHeight - margin) {
+      const above = rect.top - 4 - h
+      top = above >= margin ? above : Math.max(margin, window.innerHeight - margin - h)
+    }
+    setPos({ top, left })
+  }, [])
+
+  // popover 掛上後才量得到高度，先在 layout 階段修正一次座標（避免翻轉時閃一下）。
+  useLayoutEffect(() => {
+    if (open) updatePos()
+  }, [open, updatePos])
+
+  // 捲動（含表格內層 overflow-x-auto，故用 capture）／視窗縮放時重新定位。
+  // 不可改為關閉：輸入按「儲存」才寫回，關掉會靜默丟掉使用者已打的名稱／連結。
   useEffect(() => {
     if (!open) return
-    const close = () => setOpen(false)
-    window.addEventListener('scroll', close, true)
-    window.addEventListener('resize', close)
+    window.addEventListener('scroll', updatePos, true)
+    window.addEventListener('resize', updatePos)
     return () => {
-      window.removeEventListener('scroll', close, true)
-      window.removeEventListener('resize', close)
+      window.removeEventListener('scroll', updatePos, true)
+      window.removeEventListener('resize', updatePos)
     }
-  }, [open])
+  }, [open, updatePos])
 
   function openEditor() {
     const p = parseLink(value)

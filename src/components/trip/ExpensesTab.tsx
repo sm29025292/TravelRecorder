@@ -170,14 +170,14 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
         </button>
         {expanded && (
           <div className="space-y-2 border-t bg-gray-50/50 px-3 py-3">
-            <div className="grid grid-cols-2 gap-2">
-              <CardField label="日期">
-                <DateInput value={it.date} onChange={(v) => update(it.id, { date: v })} />
-              </CardField>
-              <CardField label="時間">
-                <TimeInput value={it.time} onChange={(v) => update(it.id, { time: v })} />
-              </CardField>
-            </div>
+            {/* 日期獨佔一行：原生 <input type="date"> 最小內容寬約 162px，
+                與標籤並排放進手機半格（約 146px）會撐破格子、把「時間」擠到日期欄上面。 */}
+            <CardField label="日期">
+              <DateInput value={it.date} onChange={(v) => update(it.id, { date: v })} />
+            </CardField>
+            <CardField label="時間">
+              <TimeInput value={it.time} onChange={(v) => update(it.id, { time: v })} />
+            </CardField>
             <CardField label="項目">
               <TextInput value={it.item} onChange={(v) => update(it.id, { item: v })} />
             </CardField>
@@ -320,7 +320,7 @@ function CardField({ label, children }: { label: string; children: ReactNode }) 
   return (
     <label className="flex items-center gap-2 text-sm">
       <span className="w-16 shrink-0 text-xs text-gray-500">{label}</span>
-      <span className="flex-1">{children}</span>
+      <span className="min-w-0 flex-1">{children}</span>
     </label>
   )
 }

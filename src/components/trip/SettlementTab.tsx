@@ -280,7 +280,7 @@ function CardField({ label, children }: { label: string; children: ReactNode }) 
   return (
     <label className="flex items-center gap-2 text-sm">
       <span className="w-14 shrink-0 text-xs text-gray-500">{label}</span>
-      <span className="flex-1">{children}</span>
+      <span className="min-w-0 flex-1">{children}</span>
     </label>
   )
 }

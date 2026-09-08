@@ -78,7 +78,7 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
       <Field label="旅程名稱">
         <TextInput value={trip.name} onChange={(v) => update({ name: v })} />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="國家">
           <TextInput
             value={country}
@@ -109,14 +109,14 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
       {trip.region && !country && (
         <p className="-mt-2 text-xs text-gray-400">舊地區欄：{trip.region}</p>
       )}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="出發日期">
           <DateInput value={trip.startDate} onChange={(v) => update({ startDate: v })} />
         </Field>
         <Field label="回程日期">
           <DateInput value={trip.endDate} onChange={(v) => update({ endDate: v })} />
         </Field>
-        <Field label={' '}>
+        <Field label={' '} labelClassName="hidden sm:block">
           <button
             type="button"
             onClick={handleShiftDates}
@@ -129,7 +129,7 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
       <p className="-mt-2 text-xs text-gray-400">
         機票改期時整趟平移 N 天（trip 起訖＋所有行程列日期；花費日期不動）。
       </p>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="外幣名稱">
           <TextInput
             value={trip.currencyLabel}
@@ -155,10 +155,20 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
   )
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  children,
+  labelClassName = '',
+}: {
+  label: string
+  children: ReactNode
+  labelClassName?: string
+}) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-gray-600">{label}</span>
+      <span className={`mb-1 block text-sm font-medium text-gray-600 ${labelClassName}`}>
+        {label}
+      </span>
       {children}
     </label>
   )
