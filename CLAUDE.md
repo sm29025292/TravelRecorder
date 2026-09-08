@@ -696,6 +696,19 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   捲動）；行程頁欄位較多（13 欄），本輪未強求零捲動，`min-w-[96rem]` 隨時間欄同比例
   降為 `min-w-[90rem]`（避免縮時間欄後備註/景點欄被意外撐寬，但保留其原有橫向捲動）。
   全 155 綠、build 通過。
+- ✅ **T45 行程頁欄寬微調：貼近花費頁寬度、縮減橫向捲動範圍**（2026-09-08）：與擁有者逐欄
+  討論後，`AttractionPicker.tsx`（`variant='cells'`）類型 `w-24→w-20`、都市 `w-28→w-24`、
+  景點 `min-w-[14rem]→min-w-[12rem]`；`ItineraryTab.tsx` `renderRow` 交通(日元)
+  `w-24→w-20`、花費(日元) `w-24→w-20`、小計(日元) `w-24→w-16`、備註
+  `min-w-[8rem]→min-w-[7rem]`、連結 `w-40→w-28`；表格 `min-w-[90rem]`（兩處）同步調降為
+  `min-w-[80rem]`。用 Playwright（1280/1366/1400px）建測試旅程＋一筆較長景點名／備註的
+  行程列量測，13 欄皆 `clipped: false`（原生 `<input type="date">` 實測最小內容寬度約
+  162px、比 `DATE_COL_CLASS` hint 大，瀏覽器自動撐寬，與 T44 發現一致；文字輸入框內容
+  再長也只會內部捲動、不會視覺裁切）。容器可用寬度實測固定 1118px（同 T44），調整後表格
+  總寬 1280px（=新 `min-w-[80rem]`，恰好貼近各欄自然內容需求總和），與可用寬度差距由
+  T44 完成時的 322px 縮小到 162px（橫向捲動範圍減半，仍非零捲動，13 欄含三段式景點選擇器
+  ＋連結欄，與 T44 評估一致）。未動花費頁／`variant='stack'`（手機卡片）／`renderCard`
+  （T37 手機摘要）；全 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
