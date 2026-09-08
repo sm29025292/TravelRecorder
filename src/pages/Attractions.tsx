@@ -470,15 +470,16 @@ export default function Attractions() {
       {/* 新增景點表單：填完整再按「確定新增」 */}
       <div className="rounded-lg border bg-gray-50 px-3 py-3">
         <div className="mb-2 text-sm font-medium text-gray-700">新增景點</div>
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="text-sm">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3">
+          {/* 第一排：國家／都市／區域 */}
+          <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">國家</span>
             <TextInput
               value={newCountry}
               placeholder="例：日本"
               onChange={setNewCountry}
               list="new-countries"
-              className="w-28"
+              className="w-full"
             />
             <datalist id="new-countries">
               {opts.countries.map((c) => (
@@ -486,14 +487,14 @@ export default function Attractions() {
               ))}
             </datalist>
           </label>
-          <label className="text-sm">
+          <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">都市</span>
             <TextInput
               value={newCity}
               placeholder="例：大阪"
               onChange={setNewCity}
               list="new-cities"
-              className="w-28"
+              className="w-full"
             />
             <datalist id="new-cities">
               {newCityOptions.map((c) => (
@@ -501,14 +502,14 @@ export default function Attractions() {
               ))}
             </datalist>
           </label>
-          <label className="text-sm">
+          <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">區域</span>
             <TextInput
               value={newDistrict}
               placeholder="例：心齋橋"
               onChange={setNewDistrict}
               list="new-districts"
-              className="w-28"
+              className="w-full"
             />
             <datalist id="new-districts">
               {newDistrictOptions.map((d) => (
@@ -516,12 +517,13 @@ export default function Attractions() {
               ))}
             </datalist>
           </label>
-          <label className="text-sm">
+          {/* 第二排：類型／景點名稱／詳細地址 */}
+          <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">類型</span>
             <Select
               value={newType}
               onChange={(v) => setNewType(v as Attraction['type'])}
-              className="w-24"
+              className="w-full"
             >
               <option value="">未設</option>
               {ATTRACTION_TYPES.map((t) => (
@@ -531,45 +533,47 @@ export default function Attractions() {
               ))}
             </Select>
           </label>
-          <label className="text-sm">
+          <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">景點名稱</span>
             <TextInput
               value={newName}
               placeholder="必填"
               onChange={setNewName}
-              className="w-40"
+              className="w-full"
             />
           </label>
-          <label className="text-sm">
+          <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">詳細地址</span>
-            <TextInput value={newAddress} onChange={setNewAddress} className="w-48" />
+            <TextInput value={newAddress} onChange={setNewAddress} className="w-full" />
           </label>
-          <label className="text-sm">
+          {/* 第三排：網址／備註／優先度 */}
+          <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">網址</span>
-            <TextInput value={newUrl} placeholder="https://" onChange={setNewUrl} className="w-48" />
+            <TextInput value={newUrl} placeholder="https://" onChange={setNewUrl} className="w-full" />
           </label>
-          <label className="text-sm">
+          <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">備註</span>
-            <TextInput value={newNotes} onChange={setNewNotes} className="w-40" />
+            <TextInput value={newNotes} onChange={setNewNotes} className="w-full" />
           </label>
           <div className="text-sm">
             <span className="mb-1 block text-xs text-gray-500">優先度</span>
             <div className="py-1">
-              <PriorityStars value={newPriority} onChange={setNewPriority} />
+              <span className="inline-block">
+                <PriorityStars value={newPriority} onChange={setNewPriority} />
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={addRow}
-              disabled={!newName.trim()}
-              className="rounded bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-            >
-              確定新增
-            </button>
-            {!newName.trim() && (
-              <span className="text-xs text-gray-400">請先輸入景點名稱</span>
-            )}
-          </div>
+        </div>
+        {/* 確定新增：九宮格下方獨立一列 */}
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            onClick={addRow}
+            disabled={!newName.trim()}
+            className="rounded bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+          >
+            確定新增
+          </button>
+          {!newName.trim() && <span className="text-xs text-gray-400">請先輸入景點名稱</span>}
         </div>
       </div>
 
