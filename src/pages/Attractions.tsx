@@ -25,7 +25,7 @@ import { applyMerge, findDuplicateGroups } from '../lib/dedupeAttractions'
 import { findOrphanItinerary } from '../lib/orphanItinerary'
 import { findOrphanMemberRefs, type OrphanMemberRef } from '../lib/orphanMembers'
 import { visitedAttractionIds } from '../lib/visited'
-import { linkDisplayText } from '../lib/link'
+import { linkDisplayText, serializeLink } from '../lib/link'
 import LinkField from '../components/LinkField'
 
 const inputCls =
@@ -124,6 +124,7 @@ export default function Attractions() {
   const [newType, setNewType] = useState<Attraction['type']>('')
   const [newName, setNewName] = useState('')
   const [newAddress, setNewAddress] = useState('')
+  const [newUrlName, setNewUrlName] = useState('')
   const [newUrl, setNewUrl] = useState('')
   const [newNotes, setNewNotes] = useState('')
   const [newPriority, setNewPriority] = useState(0)
@@ -170,7 +171,7 @@ export default function Attractions() {
       district: newDistrict.trim(),
       name: newName.trim(),
       address: newAddress.trim(),
-      url: newUrl.trim(),
+      url: serializeLink(newUrlName, newUrl),
       notes: newNotes.trim(),
       priority: newPriority,
       type: newType,
@@ -180,6 +181,7 @@ export default function Attractions() {
     setNewName('')
     setNewType('')
     setNewAddress('')
+    setNewUrlName('')
     setNewUrl('')
     setNewNotes('')
     setNewPriority(0)
@@ -558,7 +560,14 @@ export default function Attractions() {
           </label>
           <label className="block text-sm sm:col-span-2">
             <span className="mb-1 block text-xs text-gray-500">網址</span>
-            <TextInput value={newUrl} placeholder="https://" onChange={setNewUrl} className="w-full" />
+            <div className="flex gap-2">
+              <div className="w-24 shrink-0">
+                <TextInput value={newUrlName} placeholder="名稱" onChange={setNewUrlName} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <TextInput value={newUrl} placeholder="https://" onChange={setNewUrl} />
+              </div>
+            </div>
           </label>
           {/* 第三排：備註(2/5)／優先度(3/5) */}
           <label className="block text-sm sm:col-span-2">
