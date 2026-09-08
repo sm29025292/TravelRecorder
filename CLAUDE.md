@@ -638,6 +638,13 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   `newCountry` 級聯、區域依 `newCountry`+`newCity` 級聯（與篩選列一致——選到完整國家名才縮，
   只給建議不自動代入）。`cells.tsx` 的 `TextInput` 早已支援 `list` prop，未改。無 schema／
   `src/lib` 純函式／CSV／備份變動；純 UI／流程調整、無新測試；既有 155 綠、build 通過。
+  **後續版面微調（2026-09-08）**：新增表單由 `flex flex-wrap` 改為 CSS grid 規整三排
+  （`grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3`——手機兩欄、桌面三欄）：第一排國家／都市／
+  區域、第二排類型／景點名稱／詳細地址、第三排網址／備註／優先度；各欄位 `label` 改 `block`、
+  輸入框固定寬（`w-28`／`w-40`／`w-48`／`w-24`）改 `w-full` 填滿格子；優先度 `PriorityStars`
+  外包 `inline-block` 讓星星靠左（元件本身 `justify-end` 不動）；「確定新增」按鈕由表單內移到
+  九宮格**下方獨立一列**（`mt-3 flex`、靠左，附「請先輸入景點名稱」提示）。純版面重排，
+  `addRow`／datalist 級聯／必填驗證全不動；全 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
