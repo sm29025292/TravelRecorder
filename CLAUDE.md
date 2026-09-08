@@ -739,6 +739,21 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   的 `parseLink`／`serializeLink`／`linkDisplayText` 皆未改）；用 Playwright 實測新增流程
   （填「官網」＋`https://example.com`）確認存檔後樹狀列表正確顯示可點連結、href 正確。
   全 155 綠、build 通過。
+- ✅ **修復 LinkField popover 被容器邊框裁切的 bug**（2026-09-08）：景點庫每個國家節點容器
+  （`Attractions.tsx` 的 `overflow-hidden rounded-lg border bg-white`，給摺疊圓角用）會裁掉
+  溢出的子元素——`LinkField.tsx`（T35）的編輯 popover 原本用 `absolute right-0 top-full`
+  相對定位在該容器內，往下展開的內容（尤其表格接近容器下緣的列）會被裁掉一截（使用者截圖
+  回報：點 ✎ 編輯連結時，popover 下半部「連結」欄位被邊框蓋住）。改為 `createPortal` 把
+  popover 掛到 `document.body`、`position: fixed`（座標於 `openEditor()` 時用
+  `wrapRef.current.getBoundingClientRect()` 算出，右邊界貼齊欄位右緣、超出視窗左右邊界時
+  夾到 8px margin 內），完全不受任何祖先 `overflow` 裁切；點外面關閉的 `mousedown` 監聽
+  同時檢查 `wrapRef`／`popRef`（popover 已不在 `wrapRef` DOM 樹內，只查 `wrapRef` 會誤判成
+  點外面）；新增捲動／視窗縮放時關閉 popover（`window.addEventListener('scroll', ..., true)`
+  含 capture 以偵測表格內層 `overflow-x-auto` 的捲動，`fixed` 定位不會跟著捲動內容走，
+  捲動中維持開啟座標會失準，直接關閉最簡單安全）。行為與外觀（欄位、按鈕、hint 文字）完全
+  不變，`ItineraryTab.tsx`／景點庫兩處呼叫端零改動。用 Playwright 實測：新增兩筆同都市景點、
+  點第一列 ✎ 開啟 popover，「名稱」「連結」兩欄與「儲存」按鈕完整可見不再被裁切；輸入文字
+  不會誤觸發外部點擊關閉；儲存後連結正確更新為新名稱＋原網址。全 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
