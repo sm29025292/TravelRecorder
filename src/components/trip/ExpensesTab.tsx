@@ -88,7 +88,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
         <Td className="min-w-[8rem]">
           <TextInput value={it.item} onChange={(v) => update(it.id, { item: v })} />
         </Td>
-        <Td className="w-[4.5rem]">
+        <Td className="w-[4.75rem]">
           <Select value={it.currency} onChange={(v) => update(it.id, { currency: v })}>
             <option value={trip.currencyCode}>{trip.currencyLabel || trip.currencyCode}</option>
             <option value="TWD">台幣</option>
