@@ -696,6 +696,34 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   捲動）；行程頁欄位較多（13 欄），本輪未強求零捲動，`min-w-[96rem]` 隨時間欄同比例
   降為 `min-w-[90rem]`（避免縮時間欄後備註/景點欄被意外撐寬，但保留其原有橫向捲動）。
   全 155 綠、build 通過。
+- ✅ **T45 行程頁欄寬微調：貼近花費頁寬度、縮減橫向捲動範圍**（2026-09-08）：與擁有者逐欄
+  討論後，`AttractionPicker.tsx`（`variant='cells'`）類型 `w-24→w-20`、都市 `w-28→w-24`、
+  景點 `min-w-[14rem]→min-w-[12rem]`；`ItineraryTab.tsx` `renderRow` 交通(日元)
+  `w-24→w-20`、花費(日元) `w-24→w-20`、小計(日元) `w-24→w-16`、備註
+  `min-w-[8rem]→min-w-[7rem]`、連結 `w-40→w-28`；表格 `min-w-[90rem]`（兩處）同步調降為
+  `min-w-[80rem]`。用 Playwright（1280/1366/1400px）建測試旅程＋一筆較長景點名／備註的
+  行程列量測，13 欄皆 `clipped: false`（原生 `<input type="date">` 實測最小內容寬度約
+  162px、比 `DATE_COL_CLASS` hint 大，瀏覽器自動撐寬，與 T44 發現一致；文字輸入框內容
+  再長也只會內部捲動、不會視覺裁切）。容器可用寬度實測固定 1118px（同 T44），調整後表格
+  總寬 1280px（=新 `min-w-[80rem]`，恰好貼近各欄自然內容需求總和），與可用寬度差距由
+  T44 完成時的 322px 縮小到 162px（橫向捲動範圍減半，仍非零捲動，13 欄含三段式景點選擇器
+  ＋連結欄，與 T44 評估一致）。未動花費頁／`variant='stack'`（手機卡片）／`renderCard`
+  （T37 手機摘要）；全 155 綠、build 通過。
+- ✅ **行程金額標題改顯示幣別代碼（不加括號）**（2026-09-08，T45 後續小調整，經兩輪修正定案）：
+  最初嘗試過「Tailwind 任意值欄寬 `w-[4.5rem]`／`w-[4.75rem]`」＋「`CURRENCY_SHORT_LABEL` 特殊
+  對照表（日元→円等）」兩種做法，擁有者確認後**兩者都不要**——欄寬**改回 `w-20`**
+  （`ExpensesTab.tsx` 幣別 `<Select>` 的 `<Td>`、`AttractionPicker.tsx`〔`variant='cells'`〕
+  類型 `<Td>`，`variant='stack'` 手機卡片版不受影響）；`src/lib/currency.ts` 的
+  `CURRENCY_SHORT_LABEL` 對照表整個移除（無其他呼叫者）。`ItineraryTab.tsx` 的 `cur` 改為
+  直接用 `trip.currencyCode`（`JPY`／`USD`／`TWD`／`HKD` 等原始代碼，不做任何對照或轉換）；
+  桌面表頭與手機卡片欄位標籤的 `交通({cur})`／`花費({cur})`／`小計({cur})` 改**不加括號**——
+  `交通{cur}`／`花費{cur}`／`小計{cur}`（例：`交通JPY`）。當日小計列／頁尾總計列的
+  `{cur} 金額` 寫法本來就無括號，未受影響。`ExpensesTab.tsx`／`OverviewTab.tsx`／
+  `SyncDialog.tsx` 等其他頁面顯示的仍是完整 `currencyLabel`（如「日元」），未受影響——
+  只有行程頁金額欄標題這處改用裸幣別代碼。用 Playwright 實測（1400px）確認
+  `交通JPY`／`花費JPY`／`小計JPY` 正確顯示、花費頁幣別欄「台幣」與行程頁類型欄「全部」
+  皆不裁切、花費頁整行仍剛好落在容器可用寬度 1118px 內（零捲動，T44 起的既有結論不變）。
+  無 schema／`src/lib` 測試變動；全 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 

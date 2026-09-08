@@ -93,7 +93,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
   }
 
   const list = items ?? []
-  const cur = trip.currencyLabel || trip.currencyCode
+  const cur = trip.currencyCode
   const groups = groupItineraryByDate(list, {
     startDate: trip.startDate,
     endDate: trip.endDate,
@@ -149,28 +149,28 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
         <Td className="w-14">
           <NumberInput value={it.hours} onChange={(n) => update(it.id, { hours: n })} />
         </Td>
-        <Td className="w-24">
+        <Td className="w-20">
           <NumberInput
             value={it.transportCost}
             onChange={(n) => update(it.id, { transportCost: n })}
           />
         </Td>
-        <Td className="w-24">
+        <Td className="w-20">
           <NumberInput
             value={it.activityCost}
             onChange={(n) => update(it.id, { activityCost: n })}
           />
         </Td>
-        <Td className="w-24 text-right font-medium tabular-nums">
+        <Td className="w-16 text-right font-medium tabular-nums">
           <div>{fmt(itineraryForeignSubtotal(it))}</div>
           <div className="text-xs font-normal text-gray-400">
             {fmt(itinerarySubtotal(it, trip))}
           </div>
         </Td>
-        <Td className="min-w-[8rem]">
+        <Td className="min-w-[7rem]">
           <TextInput value={it.notes} onChange={(v) => update(it.id, { notes: v })} />
         </Td>
-        <Td className="w-40">
+        <Td className="w-28">
           <LinkField value={it.link} onChange={(v) => update(it.id, { link: v })} />
         </Td>
         <Td>
@@ -193,9 +193,9 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           <Th>都市</Th>
           <Th>景點</Th>
           <Th className="text-right">時數</Th>
-          <Th className="text-right">交通({cur})</Th>
-          <Th className="text-right">花費({cur})</Th>
-          <Th className="text-right">小計({cur})</Th>
+          <Th className="text-right">交通{cur}</Th>
+          <Th className="text-right">花費{cur}</Th>
+          <Th className="text-right">小計{cur}</Th>
           <Th>備註</Th>
           <Th>連結</Th>
           <Th></Th>
@@ -286,13 +286,13 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
               <NumberInput value={it.hours} onChange={(n) => update(it.id, { hours: n })} />
             </CardField>
             <div className="grid grid-cols-2 gap-2">
-              <CardField label={`交通(${cur})`}>
+              <CardField label={`交通${cur}`}>
                 <NumberInput
                   value={it.transportCost}
                   onChange={(n) => update(it.id, { transportCost: n })}
                 />
               </CardField>
-              <CardField label={`花費(${cur})`}>
+              <CardField label={`花費${cur}`}>
                 <NumberInput
                   value={it.activityCost}
                   onChange={(n) => update(it.id, { activityCost: n })}
@@ -332,7 +332,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
       {groups.length === 0 ? (
         <div className="rounded-lg border bg-white">
           <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full min-w-[90rem] text-sm">
+            <table className="w-full min-w-[80rem] text-sm">
               {renderHead()}
               <tbody>
                 <tr>
@@ -387,7 +387,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
                   </div>
                 </div>
                 <div className="hidden overflow-x-auto sm:block">
-                  <table className="w-full min-w-[90rem] text-sm">
+                  <table className="w-full min-w-[80rem] text-sm">
                     {renderHead()}
                     <tbody>{g.items.map(renderRow)}</tbody>
                   </table>
