@@ -93,7 +93,8 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
   }
 
   const list = items ?? []
-  const cur = trip.currencyCode
+  // 幣別代碼優先（欄寬窄、行程頁只顯示裸代碼）；代碼未填時退回名稱，避免金額欄標題完全沒有單位。
+  const cur = trip.currencyCode || trip.currencyLabel
   const groups = groupItineraryByDate(list, {
     startDate: trip.startDate,
     endDate: trip.endDate,
@@ -438,7 +439,7 @@ function CardField({ label, children }: { label: string; children: ReactNode }) 
   return (
     <label className="flex items-center gap-2 text-sm">
       <span className="w-14 shrink-0 text-xs text-gray-500">{label}</span>
-      <span className="flex-1">{children}</span>
+      <span className="min-w-0 flex-1">{children}</span>
     </label>
   )
 }
