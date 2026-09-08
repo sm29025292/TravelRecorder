@@ -109,27 +109,27 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
       {trip.region && !country && (
         <p className="-mt-2 text-xs text-gray-400">舊地區欄：{trip.region}</p>
       )}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <Field label="出發日期">
           <DateInput value={trip.startDate} onChange={(v) => update({ startDate: v })} />
         </Field>
         <Field label="回程日期">
           <DateInput value={trip.endDate} onChange={(v) => update({ endDate: v })} />
         </Field>
+        <Field label="">
+          <button
+            type="button"
+            onClick={handleShiftDates}
+            className="w-full rounded border px-2.5 py-1.5 text-sm hover:bg-gray-50"
+          >
+            平移日期
+          </button>
+        </Field>
       </div>
-      <div>
-        <button
-          type="button"
-          onClick={handleShiftDates}
-          className="rounded border px-2.5 py-1.5 text-sm hover:bg-gray-50"
-        >
-          平移日期
-        </button>
-        <p className="mt-1 text-xs text-gray-400">
-          機票改期時整趟平移 N 天（trip 起訖＋所有行程列日期；花費日期不動）。
-        </p>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
+      <p className="-mt-2 text-xs text-gray-400">
+        機票改期時整趟平移 N 天（trip 起訖＋所有行程列日期；花費日期不動）。
+      </p>
+      <div className="grid grid-cols-3 gap-3">
         <Field label="外幣名稱">
           <TextInput
             value={trip.currencyLabel}
@@ -144,8 +144,6 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
             onChange={(v) => update({ currencyCode: v.toUpperCase() })}
           />
         </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
         <Field label="匯率（對台幣）">
           <NumberInput value={trip.exchangeRate} step="0.0001" onChange={(n) => update({ exchangeRate: n })} />
         </Field>

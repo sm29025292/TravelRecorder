@@ -3,7 +3,17 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import type { Trip, ItineraryItem } from '../../types'
 import { db } from '../../db/db'
 import { newId } from '../../lib/id'
-import { TextInput, DateInput, TimeInput, NumberInput, IconButton, Th, Td } from '../cells'
+import {
+  TextInput,
+  DateInput,
+  TimeInput,
+  NumberInput,
+  IconButton,
+  Th,
+  Td,
+  DATE_COL_CLASS,
+  TIME_COL_CLASS,
+} from '../cells'
 import AttractionPicker from '../AttractionPicker'
 import LinkField from '../LinkField'
 import { itinerarySubtotal, itineraryForeignSubtotal, fmt } from '../../lib/money'
@@ -119,13 +129,13 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
   function renderRow(it: ItineraryItem) {
     return (
       <tr key={it.id} className="border-t">
-        <Td className="w-32">
+        <Td className={DATE_COL_CLASS}>
           <DateInput value={it.date} onChange={(v) => update(it.id, { date: v })} />
         </Td>
-        <Td className="w-20">
+        <Td className={TIME_COL_CLASS}>
           <TimeInput value={it.time} onChange={(v) => updateStart(it, v)} />
         </Td>
-        <Td className="w-20">
+        <Td className={TIME_COL_CLASS}>
           <TimeInput value={it.endTime ?? ''} onChange={(v) => updateEnd(it, v)} />
         </Td>
         <AttractionPicker
@@ -136,7 +146,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           defaultCity={trip.city ?? ''}
           visitedIds={visitedIds}
         />
-        <Td className="w-20">
+        <Td className="w-14">
           <NumberInput value={it.hours} onChange={(n) => update(it.id, { hours: n })} />
         </Td>
         <Td className="w-24">
@@ -322,7 +332,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
       {groups.length === 0 ? (
         <div className="rounded-lg border bg-white">
           <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full min-w-[76rem] text-sm">
+            <table className="w-full min-w-[96rem] text-sm">
               {renderHead()}
               <tbody>
                 <tr>
@@ -377,7 +387,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
                   </div>
                 </div>
                 <div className="hidden overflow-x-auto sm:block">
-                  <table className="w-full min-w-[76rem] text-sm">
+                  <table className="w-full min-w-[96rem] text-sm">
                     {renderHead()}
                     <tbody>{g.items.map(renderRow)}</tbody>
                   </table>

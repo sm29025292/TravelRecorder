@@ -89,7 +89,7 @@ export default function AttractionPicker({
   )
   const citySelect = (
     <Select value={fCity} onChange={setFCity}>
-      <option value="">全部都市</option>
+      <option value="">全部</option>
       {cityOptions.map((c) => (
         <option key={c} value={c}>
           {c}
@@ -137,8 +137,8 @@ export default function AttractionPicker({
 
   return (
     <>
-      <Td className="w-20">{typeSelect}</Td>
-      <Td className="w-24">{citySelect}</Td>
+      <Td className="w-24">{typeSelect}</Td>
+      <Td className="w-28">{citySelect}</Td>
       <Td className="min-w-[14rem]">{attractionSelect}</Td>
     </>
   )

@@ -4,6 +4,11 @@ import { normalizeTimeText } from '../lib/itinerary'
 const base =
   'w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
 
+// T44：日期／時間欄固定寬度全站統一，花費頁／行程頁（及未來新增處）都套用這兩個 class，
+// 避免各檔案各自調整、數值跑掉。
+export const DATE_COL_CLASS = 'w-24'
+export const TIME_COL_CLASS = 'w-28'
+
 // 所有輸入採「聚焦時不被外部值覆寫」的緩衝策略：
 // 因為資料寫入 IndexedDB 後會透過 useLiveQuery 回流，若直接受控可能造成游標跳動／字被吃掉。
 type TextLikeProps = {

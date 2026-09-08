@@ -645,6 +645,29 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   外包 `inline-block` 讓星星靠左（元件本身 `justify-end` 不動）；「確定新增」按鈕由表單內移到
   九宮格**下方獨立一列**（`mt-3 flex`、靠左，附「請先輸入景點名稱」提示）。純版面重排，
   `addRow`／datalist 級聯／必填驗證全不動；全 155 綠、build 通過。
+- ✅ **T44 電腦版排版微調（總覽／花費／行程欄寬＋景點庫新增表單版面）**（2026-09-08）：
+  純 CSS／JSX 版面調整，無 schema、無 `src/lib` 純函式變動。`src/components/trip/OverviewTab.tsx`：
+  出發／回程日期／平移日期改 `grid grid-cols-3 gap-3` 同一行三等分（平移日期按鈕用
+  `<Field label="">` 包裹以對齊其他欄位高度）；外幣名稱／外幣代碼／匯率同樣改
+  `grid grid-cols-3 gap-3` 同一行三等分（取代原本兩個 `grid-cols-2`）。`src/components/cells.tsx`
+  新增共用常數 `DATE_COL_CLASS='w-24'`／`TIME_COL_CLASS='w-28'`，`ExpensesTab.tsx`／
+  `ItineraryTab.tsx` 的日期／時間 `<Td>` 都改引用這兩個常數（全站日期/時間欄寬統一）；
+  `ItineraryTab.tsx` 時數欄 `w-20→w-14`；`AttractionPicker.tsx`（`variant='cells'`）類型欄
+  `w-20→w-24`、都市欄 `w-24→w-28`，都市下拉「全部都市」選項文字改「全部」。
+  **關鍵技術發現**：`ItineraryTab`／`ExpensesTab` 的 `<table>` 是預設 auto table-layout，
+  `<Td>` 的 `w-*` 只是「提示」——原生 `<input type="date">` 在表格情境下有瀏覽器內建的
+  最小內容寬度（實測約 162px，無法用 class 再壓縮），若各欄 hint 總寬超過表格
+  `min-w-[Xrem]` 下限，瀏覽器會把彈性欄位（時間／下拉）壓到 hint 以下，導致調寬時間欄
+  卻仍被裁切；修法是把 `ItineraryTab.tsx` 兩處 `min-w-[76rem]→min-w-[96rem]`、
+  `ExpensesTab.tsx` 的 `min-w-[69rem]→min-w-[84rem]`，讓 auto-layout 不需壓縮任何一欄
+  （用 Playwright 實測每欄 `getBoundingClientRect()` 確認達標），代價是表格整體變寬、
+  桌面下更容易觸發既有 `overflow-x-auto` 橫捲（非新增行為，只是捲動範圍變大）。
+  `src/pages/Attractions.tsx` 新增景點表單重排：第一排 國家／都市／區域（不動）；
+  第二排 類型／(空白格 `<div aria-hidden="true" />`)／確定新增按鈕（原「詳細地址」格，
+  改用 `flex flex-col justify-end` 讓按鈕與下方「請先輸入景點名稱」提示對齊其他欄位高度）；
+  第三排 景點名稱／詳細地址／網址；第四排 備註／優先度。`addRow`／datalist 級聯／
+  成功後保留國家都市區域清空其餘欄位——邏輯全未動。全 155 綠、build 通過；
+  手動以 Playwright（Chromium，1400px 桌面寬）驗證各頁排版與新增流程正常。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 

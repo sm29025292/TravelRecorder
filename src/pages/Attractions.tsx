@@ -517,7 +517,7 @@ export default function Attractions() {
               ))}
             </datalist>
           </label>
-          {/* 第二排：類型／景點名稱／詳細地址 */}
+          {/* 第二排：類型／（空）／確定新增 */}
           <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">類型</span>
             <Select
@@ -533,6 +533,18 @@ export default function Attractions() {
               ))}
             </Select>
           </label>
+          <div aria-hidden="true" />
+          <div className="flex flex-col justify-end gap-1">
+            <button
+              onClick={addRow}
+              disabled={!newName.trim()}
+              className="rounded bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+            >
+              確定新增
+            </button>
+            {!newName.trim() && <span className="text-xs text-gray-400">請先輸入景點名稱</span>}
+          </div>
+          {/* 第三排：景點名稱／詳細地址／網址 */}
           <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">景點名稱</span>
             <TextInput
@@ -546,11 +558,11 @@ export default function Attractions() {
             <span className="mb-1 block text-xs text-gray-500">詳細地址</span>
             <TextInput value={newAddress} onChange={setNewAddress} className="w-full" />
           </label>
-          {/* 第三排：網址／備註／優先度 */}
           <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">網址</span>
             <TextInput value={newUrl} placeholder="https://" onChange={setNewUrl} className="w-full" />
           </label>
+          {/* 第四排：備註／優先度 */}
           <label className="block text-sm">
             <span className="mb-1 block text-xs text-gray-500">備註</span>
             <TextInput value={newNotes} onChange={setNewNotes} className="w-full" />
@@ -563,17 +575,6 @@ export default function Attractions() {
               </span>
             </div>
           </div>
-        </div>
-        {/* 確定新增：九宮格下方獨立一列 */}
-        <div className="mt-3 flex items-center gap-2">
-          <button
-            onClick={addRow}
-            disabled={!newName.trim()}
-            className="rounded bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-          >
-            確定新增
-          </button>
-          {!newName.trim() && <span className="text-xs text-gray-400">請先輸入景點名稱</span>}
         </div>
       </div>
 

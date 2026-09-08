@@ -3,7 +3,18 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import type { Trip, ExpenseItem } from '../../types'
 import { db } from '../../db/db'
 import { newId } from '../../lib/id'
-import { TextInput, DateInput, TimeInput, NumberInput, Select, IconButton, Th, Td } from '../cells'
+import {
+  TextInput,
+  DateInput,
+  TimeInput,
+  NumberInput,
+  Select,
+  IconButton,
+  Th,
+  Td,
+  DATE_COL_CLASS,
+  TIME_COL_CLASS,
+} from '../cells'
 import MemberSelect from '../MemberSelect'
 import ParticipantsPicker from '../ParticipantsPicker'
 import { expenseSubtotal, expensesTotal, expensesAverage, fmt } from '../../lib/money'
@@ -68,10 +79,10 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
   function renderRow(it: ExpenseItem) {
     return (
       <tr key={it.id} className="border-t">
-        <Td className="w-32">
+        <Td className={DATE_COL_CLASS}>
           <DateInput value={it.date} onChange={(v) => update(it.id, { date: v })} />
         </Td>
-        <Td className="w-20">
+        <Td className={TIME_COL_CLASS}>
           <TimeInput value={it.time} onChange={(v) => update(it.id, { time: v })} />
         </Td>
         <Td className="min-w-[8rem]">
@@ -242,7 +253,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
     <div className="space-y-3">
       <div className="rounded-lg border bg-white">
         <div className="hidden overflow-x-auto sm:block">
-          <table className="w-full min-w-[69rem] text-sm">
+          <table className="w-full min-w-[84rem] text-sm">
             <thead className="bg-gray-50 text-left text-xs text-gray-500">
               <tr>
                 <Th>日期</Th>
