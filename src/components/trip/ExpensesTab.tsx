@@ -3,7 +3,18 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import type { Trip, ExpenseItem } from '../../types'
 import { db } from '../../db/db'
 import { newId } from '../../lib/id'
-import { TextInput, DateInput, TimeInput, NumberInput, Select, IconButton, Th, Td } from '../cells'
+import {
+  TextInput,
+  DateInput,
+  TimeInput,
+  NumberInput,
+  Select,
+  IconButton,
+  Th,
+  Td,
+  DATE_COL_CLASS,
+  TIME_COL_CLASS,
+} from '../cells'
 import MemberSelect from '../MemberSelect'
 import ParticipantsPicker from '../ParticipantsPicker'
 import { expenseSubtotal, expensesTotal, expensesAverage, fmt } from '../../lib/money'
@@ -68,45 +79,45 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
   function renderRow(it: ExpenseItem) {
     return (
       <tr key={it.id} className="border-t">
-        <Td className="w-32">
+        <Td className={DATE_COL_CLASS}>
           <DateInput value={it.date} onChange={(v) => update(it.id, { date: v })} />
         </Td>
-        <Td className="w-20">
+        <Td className={TIME_COL_CLASS}>
           <TimeInput value={it.time} onChange={(v) => update(it.id, { time: v })} />
         </Td>
         <Td className="min-w-[8rem]">
           <TextInput value={it.item} onChange={(v) => update(it.id, { item: v })} />
         </Td>
-        <Td className="w-24">
+        <Td className="w-20">
           <Select value={it.currency} onChange={(v) => update(it.id, { currency: v })}>
             <option value={trip.currencyCode}>{trip.currencyLabel || trip.currencyCode}</option>
             <option value="TWD">台幣</option>
           </Select>
         </Td>
-        <Td className="w-28">
+        <Td className="w-20">
           <NumberInput value={it.amount} onChange={(n) => update(it.id, { amount: n })} />
         </Td>
-        <Td className="w-24">
+        <Td className="w-20">
           <NumberInput value={it.fee} onChange={(n) => update(it.id, { fee: n })} />
         </Td>
-        <Td className="w-28 text-right font-medium tabular-nums">
+        <Td className="w-16 text-right font-medium tabular-nums">
           {fmt(expenseSubtotal(it, trip))}
         </Td>
-        <Td className="w-24">
+        <Td className="w-20">
           <MemberSelect
             members={members ?? []}
             value={it.payerId ?? ''}
             onChange={(v) => update(it.id, { payerId: v })}
           />
         </Td>
-        <Td className="w-28">
+        <Td className="w-24">
           <ParticipantsPicker
             members={members ?? []}
             value={it.participantIds ?? []}
             onChange={(v) => update(it.id, { participantIds: v })}
           />
         </Td>
-        <Td className="w-28">
+        <Td className="w-24">
           <Select
             value={it.paymentStatus}
             onChange={(v) => update(it.id, { paymentStatus: v })}
@@ -117,7 +128,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
             <option value="已結清">已結清</option>
           </Select>
         </Td>
-        <Td className="min-w-[8rem]">
+        <Td className="min-w-[7rem]">
           <TextInput value={it.notes} onChange={(v) => update(it.id, { notes: v })} />
         </Td>
         <Td>

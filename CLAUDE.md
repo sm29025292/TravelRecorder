@@ -645,6 +645,57 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   外包 `inline-block` 讓星星靠左（元件本身 `justify-end` 不動）；「確定新增」按鈕由表單內移到
   九宮格**下方獨立一列**（`mt-3 flex`、靠左，附「請先輸入景點名稱」提示）。純版面重排，
   `addRow`／datalist 級聯／必填驗證全不動；全 155 綠、build 通過。
+- ✅ **T44 電腦版排版微調（總覽／花費／行程欄寬＋景點庫新增表單版面）**（2026-09-08）：
+  純 CSS／JSX 版面調整，無 schema、無 `src/lib` 純函式變動。`src/components/trip/OverviewTab.tsx`：
+  出發／回程日期／平移日期改 `grid grid-cols-3 gap-3` 同一行三等分（平移日期按鈕用
+  `<Field label="">` 包裹以對齊其他欄位高度）；外幣名稱／外幣代碼／匯率同樣改
+  `grid grid-cols-3 gap-3` 同一行三等分（取代原本兩個 `grid-cols-2`）。`src/components/cells.tsx`
+  新增共用常數 `DATE_COL_CLASS='w-24'`／`TIME_COL_CLASS='w-28'`，`ExpensesTab.tsx`／
+  `ItineraryTab.tsx` 的日期／時間 `<Td>` 都改引用這兩個常數（全站日期/時間欄寬統一）；
+  `ItineraryTab.tsx` 時數欄 `w-20→w-14`；`AttractionPicker.tsx`（`variant='cells'`）類型欄
+  `w-20→w-24`、都市欄 `w-24→w-28`，都市下拉「全部都市」選項文字改「全部」。
+  **關鍵技術發現**：`ItineraryTab`／`ExpensesTab` 的 `<table>` 是預設 auto table-layout，
+  `<Td>` 的 `w-*` 只是「提示」——原生 `<input type="date">` 在表格情境下有瀏覽器內建的
+  最小內容寬度（實測約 162px，無法用 class 再壓縮），若各欄 hint 總寬超過表格
+  `min-w-[Xrem]` 下限，瀏覽器會把彈性欄位（時間／下拉）壓到 hint 以下，導致調寬時間欄
+  卻仍被裁切；修法是把 `ItineraryTab.tsx` 兩處 `min-w-[76rem]→min-w-[96rem]`、
+  `ExpensesTab.tsx` 的 `min-w-[69rem]→min-w-[84rem]`，讓 auto-layout 不需壓縮任何一欄
+  （用 Playwright 實測每欄 `getBoundingClientRect()` 確認達標），代價是表格整體變寬、
+  桌面下更容易觸發既有 `overflow-x-auto` 橫捲（非新增行為，只是捲動範圍變大）。
+  `src/pages/Attractions.tsx` 新增景點表單重排：第一排 國家／都市／區域（不動）；
+  第二排 類型／(空白格 `<div aria-hidden="true" />`)／確定新增按鈕（原「詳細地址」格，
+  改用 `flex flex-col justify-end` 讓按鈕與下方「請先輸入景點名稱」提示對齊其他欄位高度）；
+  第三排 景點名稱／詳細地址／網址；第四排 備註／優先度。`addRow`／datalist 級聯／
+  成功後保留國家都市區域清空其餘欄位——邏輯全未動。全 155 綠、build 通過；
+  手動以 Playwright（Chromium，1400px 桌面寬）驗證各頁排版與新增流程正常。
+  **第二輪修正**（2026-09-08，擁有者看截圖回饋三點）：①`OverviewTab.tsx` 的
+  `<Field label="">` 改 `<Field label=" ">`（空字串在部分瀏覽器不產生與有文字時相同高度
+  的 line box，導致「平移日期」按鈕與日期輸入框沒切齊；改傳一個空白字元即可對齊）；
+  ②`cells.tsx` 的 `TIME_COL_CLASS` 由 `'w-28'` 改回 `'w-24'`（`DATE_COL_CLASS` 不變）——
+  用 Playwright `canvas.measureText` 量測 `HH:MM` 在 14px 系統字型實際只需約 47.4px，
+  `w-24`（96px，扣除固定開銷後留 66px 文字區）已足夠不裁切、且比 `w-28` 更貼近「剛好顯示」
+  不留多餘空白（因兩表格的 `min-w` 已在第一輪加大到不需壓縮任一欄，縮小 class 會直接
+  等比例縮小實際渲染寬度）；③`Attractions.tsx` 新增景點表單改用擁有者給的明確比例
+  （取代第一輪四排版面）：容器改 `grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-5`，
+  第一排 國家／都市／區域／類型／確定新增各佔 1/5（桌面 5 欄剛好排滿）；第二排
+  景點名稱（1/5，無 span）／詳細地址（`sm:col-span-2`＝2/5）／網址（`sm:col-span-2`＝2/5）；
+  第三排 備註（`sm:col-span-2`＝2/5）／優先度（`sm:col-span-3`＝3/5）。全 155 綠、build 通過；
+  Playwright 重新截圖確認三項修正、新增景點功能重測通過。
+  **第三輪修正**（2026-09-08，擁有者再看花費頁截圖回饋四點，核心訴求「整行不要橫向捲動」）：
+  ①`TIME_COL_CLASS` 再由 `'w-24'` 縮到 `'w-20'`（花費/行程共用）；②幣別欄 `w-24→w-20`；
+  ③金額／手續費／小計三欄同尺寸縮小（`w-20`／`w-20`／`w-16`，小計是純文字顯示無輸入框
+  內距與邊框開銷、可比另兩欄更窄）；④發現 `App.tsx` 的 `max-w-6xl` 外層容器扣 padding 後
+  可用寬度固定約 1118px（與瀏覽器視窗寬度無關，寬度只取決於容器與欄位總寬），
+  ①②③縮小後仍超出約 60px，用 Playwright 量測後在付錢欄（`MemberSelect` 本身已寫死
+  `min-w-[5rem]`=80px 安全下限，`Td` 改 `w-24→w-20`＝80px 剛好貼齊）與備註欄
+  （`min-w-[8rem]→min-w-[7rem]`）補足縮減量；**項目（景點名稱）欄維持原 `min-w-[8rem]`
+  不變**——曾嘗試一併縮到 `min-w-[7rem]`，但發現 T42 預設花費項目「交通（機場接駁）」
+  （8 個全形字）會被視覺裁切（資料不遺失，只是顯示不全），且此欄非本輪要求範圍，故改
+  在別處找回寬度、不引入新的顯示缺陷。最終花費頁 `min-w-[84rem]→min-w-[69rem]`，
+  Playwright 於 1280/1366/1400px 三種視窗寬度確認 `scrollWidth===clientWidth`（不需橫向
+  捲動）；行程頁欄位較多（13 欄），本輪未強求零捲動，`min-w-[96rem]` 隨時間欄同比例
+  降為 `min-w-[90rem]`（避免縮時間欄後備註/景點欄被意外撐寬，但保留其原有橫向捲動）。
+  全 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
