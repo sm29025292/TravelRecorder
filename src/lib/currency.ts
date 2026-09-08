@@ -25,17 +25,6 @@ export const COUNTRY_CURRENCY: Record<string, { code: string; label: string }> =
   台灣: { code: 'TWD', label: '台幣' },
 }
 
-/**
- * 行程頁金額欄位標題用的短幣別符號（例：`交通(円)`／`小計(US)`，比全稱幣別名精簡）。
- * 只收錄擁有者明確要求的幾種；其餘幣別由呼叫端 fallback 到既有的 currencyLabel||currencyCode。
- */
-export const CURRENCY_SHORT_LABEL: Record<string, string> = {
-  JPY: '円',
-  USD: 'US',
-  TWD: '元',
-  HKD: 'HK',
-}
-
 /** 對台幣參考匯率（只用於「使用者尚未在別的旅程用過此幣別」時的第一次預設）。 */
 export const DEFAULT_RATES: Record<string, number> = {
   JPY: 0.21,

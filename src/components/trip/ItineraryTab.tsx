@@ -26,7 +26,6 @@ import {
 import { visitedAttractionIds } from '../../lib/visited'
 import { itineraryToText } from '../../lib/exportItinerary'
 import { parseLink } from '../../lib/link'
-import { CURRENCY_SHORT_LABEL } from '../../lib/currency'
 
 export default function ItineraryTab({ trip }: { trip: Trip }) {
   const items = useLiveQuery(
@@ -94,7 +93,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
   }
 
   const list = items ?? []
-  const cur = CURRENCY_SHORT_LABEL[trip.currencyCode] ?? (trip.currencyLabel || trip.currencyCode)
+  const cur = trip.currencyCode
   const groups = groupItineraryByDate(list, {
     startDate: trip.startDate,
     endDate: trip.endDate,
@@ -194,9 +193,9 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           <Th>都市</Th>
           <Th>景點</Th>
           <Th className="text-right">時數</Th>
-          <Th className="text-right">交通({cur})</Th>
-          <Th className="text-right">花費({cur})</Th>
-          <Th className="text-right">小計({cur})</Th>
+          <Th className="text-right">交通{cur}</Th>
+          <Th className="text-right">花費{cur}</Th>
+          <Th className="text-right">小計{cur}</Th>
           <Th>備註</Th>
           <Th>連結</Th>
           <Th></Th>
@@ -287,13 +286,13 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
               <NumberInput value={it.hours} onChange={(n) => update(it.id, { hours: n })} />
             </CardField>
             <div className="grid grid-cols-2 gap-2">
-              <CardField label={`交通(${cur})`}>
+              <CardField label={`交通${cur}`}>
                 <NumberInput
                   value={it.transportCost}
                   onChange={(n) => update(it.id, { transportCost: n })}
                 />
               </CardField>
-              <CardField label={`花費(${cur})`}>
+              <CardField label={`花費${cur}`}>
                 <NumberInput
                   value={it.activityCost}
                   onChange={(n) => update(it.id, { activityCost: n })}
