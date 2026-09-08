@@ -7,7 +7,7 @@ const base =
 // T44：日期／時間欄固定寬度全站統一，花費頁／行程頁（及未來新增處）都套用這兩個 class，
 // 避免各檔案各自調整、數值跑掉。
 export const DATE_COL_CLASS = 'w-24'
-export const TIME_COL_CLASS = 'w-28'
+export const TIME_COL_CLASS = 'w-24'
 
 // 所有輸入採「聚焦時不被外部值覆寫」的緩衝策略：
 // 因為資料寫入 IndexedDB 後會透過 useLiveQuery 回流，若直接受控可能造成游標跳動／字被吃掉。

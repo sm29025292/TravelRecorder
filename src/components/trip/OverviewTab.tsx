@@ -116,7 +116,7 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
         <Field label="回程日期">
           <DateInput value={trip.endDate} onChange={(v) => update({ endDate: v })} />
         </Field>
-        <Field label="">
+        <Field label={' '}>
           <button
             type="button"
             onClick={handleShiftDates}

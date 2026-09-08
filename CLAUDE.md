@@ -668,6 +668,19 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   第三排 景點名稱／詳細地址／網址；第四排 備註／優先度。`addRow`／datalist 級聯／
   成功後保留國家都市區域清空其餘欄位——邏輯全未動。全 155 綠、build 通過；
   手動以 Playwright（Chromium，1400px 桌面寬）驗證各頁排版與新增流程正常。
+  **第二輪修正**（2026-09-08，擁有者看截圖回饋三點）：①`OverviewTab.tsx` 的
+  `<Field label="">` 改 `<Field label=" ">`（空字串在部分瀏覽器不產生與有文字時相同高度
+  的 line box，導致「平移日期」按鈕與日期輸入框沒切齊；改傳一個空白字元即可對齊）；
+  ②`cells.tsx` 的 `TIME_COL_CLASS` 由 `'w-28'` 改回 `'w-24'`（`DATE_COL_CLASS` 不變）——
+  用 Playwright `canvas.measureText` 量測 `HH:MM` 在 14px 系統字型實際只需約 47.4px，
+  `w-24`（96px，扣除固定開銷後留 66px 文字區）已足夠不裁切、且比 `w-28` 更貼近「剛好顯示」
+  不留多餘空白（因兩表格的 `min-w` 已在第一輪加大到不需壓縮任一欄，縮小 class 會直接
+  等比例縮小實際渲染寬度）；③`Attractions.tsx` 新增景點表單改用擁有者給的明確比例
+  （取代第一輪四排版面）：容器改 `grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-5`，
+  第一排 國家／都市／區域／類型／確定新增各佔 1/5（桌面 5 欄剛好排滿）；第二排
+  景點名稱（1/5，無 span）／詳細地址（`sm:col-span-2`＝2/5）／網址（`sm:col-span-2`＝2/5）；
+  第三排 備註（`sm:col-span-2`＝2/5）／優先度（`sm:col-span-3`＝3/5）。全 155 綠、build 通過；
+  Playwright 重新截圖確認三項修正、新增景點功能重測通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
