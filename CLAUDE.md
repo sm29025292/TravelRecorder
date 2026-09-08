@@ -785,6 +785,19 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   （零橫向溢出）、花費卡片日期／時間各自成行不重疊、景點庫網址兩欄手機堆疊各 164px、
   popover 於下方空間不足時正確上翻且完整落在視窗內、編輯中捲動 popover 跟著移動且輸入值保留。
   全 155 綠、build 通過。
+- ✅ **行程頁金額欄標題改「交通(円)／花費(円)／小計(円)」**（2026-09-08，覆蓋前一版「裸幣別代碼不加括號」）：
+  擁有者拍板改為**依總覽頁「外幣名稱」欄（`trip.currencyLabel`）判定單位**——等於 `'日元'` 顯示
+  `円`，其餘一律 `元`（含台幣、韓元、美元…與名稱留空的情況），括號回歸。
+  `src/components/trip/ItineraryTab.tsx` 新增 `const unit = trip.currencyLabel === '日元' ? '円' : '元'`
+  （與既有 `cur` 併存、各司其職）；桌面表頭三個 `<Th>` 由 `交通{cur}` 改 `交通({unit})`（花費／小計同）、
+  手機卡片欄位標籤 `` `交通${cur}` `` 改 `` `交通(${unit})` ``、卡片內小計行 `小計 {cur}` 改 `小計({unit})`。
+  **未動**：當日小計列與頁尾總計列的句子形式金額前綴（`{cur} 1,700`，仍是幣別代碼優先、
+  代碼空退回名稱），因為那是「JPY 1,700」這種前綴語序、換成「円 1,700」反而難讀；
+  `ExpensesTab`／`OverviewTab`／`SyncDialog` 顯示 `currencyLabel` 的地方一律未動。
+  以 Playwright（1400px 桌面）對四種資料實測表頭與欄寬：日元→`交通(円)`、韓元→`交通(元)`、
+  台幣→`交通(元)`、名稱留空→`交通(元)`，三欄皆 `scrollWidth === clientWidth`（無裁切，
+  交通／花費欄 80px、小計欄 64px 皆足夠）；390px 手機卡片同樣顯示 `交通(円)`／`花費(円)`／
+  `小計(円) 1,700（台幣 357）` 且無橫向溢出。全 155 綠、build 通過。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 

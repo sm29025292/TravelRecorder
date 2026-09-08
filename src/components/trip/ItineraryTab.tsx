@@ -93,8 +93,10 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
   }
 
   const list = items ?? []
-  // 幣別代碼優先（欄寬窄、行程頁只顯示裸代碼）；代碼未填時退回名稱，避免金額欄標題完全沒有單位。
+  // 逐日小計／總計那種句子形式的金額前綴：幣別代碼優先，代碼未填時退回名稱（不致完全沒有單位）。
   const cur = trip.currencyCode || trip.currencyLabel
+  // 金額欄標題的單位：依總覽「外幣名稱」判定——日元寫「円」，其餘一律「元」。
+  const unit = trip.currencyLabel === '日元' ? '円' : '元'
   const groups = groupItineraryByDate(list, {
     startDate: trip.startDate,
     endDate: trip.endDate,
@@ -194,9 +196,9 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           <Th>都市</Th>
           <Th>景點</Th>
           <Th className="text-right">時數</Th>
-          <Th className="text-right">交通{cur}</Th>
-          <Th className="text-right">花費{cur}</Th>
-          <Th className="text-right">小計{cur}</Th>
+          <Th className="text-right">交通({unit})</Th>
+          <Th className="text-right">花費({unit})</Th>
+          <Th className="text-right">小計({unit})</Th>
           <Th>備註</Th>
           <Th>連結</Th>
           <Th></Th>
@@ -287,13 +289,13 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
               <NumberInput value={it.hours} onChange={(n) => update(it.id, { hours: n })} />
             </CardField>
             <div className="grid grid-cols-2 gap-2">
-              <CardField label={`交通${cur}`}>
+              <CardField label={`交通(${unit})`}>
                 <NumberInput
                   value={it.transportCost}
                   onChange={(n) => update(it.id, { transportCost: n })}
                 />
               </CardField>
-              <CardField label={`花費${cur}`}>
+              <CardField label={`花費(${unit})`}>
                 <NumberInput
                   value={it.activityCost}
                   onChange={(n) => update(it.id, { activityCost: n })}
@@ -301,7 +303,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
               </CardField>
             </div>
             <div className="text-right text-xs text-gray-600">
-              小計 {cur}{' '}
+              小計({unit}){' '}
               <b className="tabular-nums text-sm text-gray-800">{fmt(foreign)}</b>
               <span className="ml-2 text-gray-400">
                 （台幣 {fmt(itinerarySubtotal(it, trip))}）
