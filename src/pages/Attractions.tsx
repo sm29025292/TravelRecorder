@@ -562,7 +562,7 @@ export default function Attractions() {
             <span className="mb-1 block text-xs text-gray-500">網址</span>
             <div className="flex gap-2">
               <div className="w-24 shrink-0">
-                <TextInput value={newUrlName} placeholder="官網" onChange={setNewUrlName} />
+                <TextInput value={newUrlName} placeholder="名稱" onChange={setNewUrlName} />
               </div>
               <div className="min-w-0 flex-1">
                 <TextInput value={newUrl} placeholder="https://" onChange={setNewUrl} />
