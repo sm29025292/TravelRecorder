@@ -683,9 +683,8 @@ export default function Attractions() {
             </div>
           </div>
         </div>
-        {/* 按鈕自成一列、靠右（T47）；提示放按鈕左側同列 */}
-        <div className="mt-3 flex items-center justify-end gap-2">
-          {!newName.trim() && <span className="text-xs text-gray-400">請先輸入景點名稱</span>}
+        {/* 按鈕自成一列、靠左（T47）；提示放按鈕右側同列 */}
+        <div className="mt-3 flex items-center justify-start gap-2">
           <button
             onClick={addRow}
             disabled={!newName.trim()}
@@ -693,6 +692,7 @@ export default function Attractions() {
           >
             確定新增
           </button>
+          {!newName.trim() && <span className="text-xs text-gray-400">請先輸入景點名稱</span>}
         </div>
       </div>
 

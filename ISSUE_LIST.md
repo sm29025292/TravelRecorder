@@ -1179,20 +1179,21 @@ export function citiesForCountries(
 
 **已拍板的版面（勿重新設計）**：
 
-- **按鈕**：從 grid 裡拿出來，放在整個「新增景點」表單**下方獨立一列、靠右對齊**；
-  `newName.trim()` 為空時的灰字提示「請先輸入景點名稱」放在按鈕**左邊**同一列（不再放按鈕下方）。
+- **按鈕**：從 grid 裡拿出來，放在整個「新增景點」表單**下方獨立一列、靠左對齊**
+  （2026-09-09 擁有者看桌面截圖後由「靠右」改為「靠左」）；`newName.trim()` 為空時的灰字提示
+  「請先輸入景點名稱」放在按鈕**右邊**同一列（不再放按鈕下方）。
 - **手機（`< sm`，兩欄）由上而下**：
   1. `國家` | `都市`
   2. `區域` | `類型`
   3. `景點名稱` | `詳細地址`
   4. `網址`（**整排寬**，內部「名稱」與「連結」**左右並排**，不再上下堆疊）
   5. `備註` | `優先度`
-  6. `確定新增`（獨立一列、靠右）
+  6. `確定新增`（獨立一列、靠左）
 - **桌面（`sm:grid-cols-5`）由上而下**（DOM 順序同上，靠 col-span 自然排成三排）：
   1. `國家`(1) `都市`(1) `區域`(1) `類型`(1) `景點名稱`(1)
   2. `詳細地址`(2) `網址`(3)
   3. `備註`(2) `優先度`(3)
-  4. `確定新增`（grid 外、靠右）
+  4. `確定新增`（grid 外、靠左）
 
 ### 實作步驟（`src/pages/Attractions.tsx`，只動「新增景點」表單那一段）
 
@@ -1201,8 +1202,7 @@ export function citiesForCountries(
 
 ```tsx
         </div>
-        <div className="mt-3 flex items-center justify-end gap-2">
-          {!newName.trim() && <span className="text-xs text-gray-400">請先輸入景點名稱</span>}
+        <div className="mt-3 flex items-center justify-start gap-2">
           <button
             onClick={addRow}
             disabled={!newName.trim()}
@@ -1210,6 +1210,7 @@ export function citiesForCountries(
           >
             確定新增
           </button>
+          {!newName.trim() && <span className="text-xs text-gray-400">請先輸入景點名稱</span>}
         </div>
 ```
 2. grid 內的 DOM 順序調整為：國家 → 都市 → 區域 → 類型 → **景點名稱** → 詳細地址 → 網址 →
@@ -1244,7 +1245,7 @@ export function citiesForCountries(
 與 **1400px 桌面**各截一次：
 - 手機六列順序與上表完全一致；「網址」的名稱／連結左右並排且都可正常輸入（名稱 96px、
   連結填滿剩餘寬度）；整頁 `scrollWidth === clientWidth`（零橫向溢出）。
-- 桌面三排 5 欄對齊、「確定新增」在表單右下自成一列；空名稱時按鈕 disabled＋左側灰字提示。
+- 桌面三排 5 欄對齊、「確定新增」在表單左下自成一列；空名稱時按鈕 disabled＋右側灰字提示。
 - 實際新增一筆（含網址名稱＋連結）確認寫入正確、成功後國家／都市／區域保留。
 
 ---
