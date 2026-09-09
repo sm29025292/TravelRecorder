@@ -63,7 +63,7 @@
 | T32 | 花費頁手機卡片式檢視 | ✅ 2026-07-15 |
 | T33 | 健檢擴充：成員孤兒參照 | ✅ 2026-07-15 |
 
-### 進行中（T34–T46，表列順序＝建議施工順序）
+### 進行中（T34–T48，表列順序＝建議施工順序）
 
 | # | 任務 | 優先 | 難度 | 依賴 | 狀態 |
 |---|------|------|------|------|------|
@@ -80,6 +80,8 @@
 | T44 | 電腦版排版微調（總覽／花費／行程欄寬＋景點庫新增表單版面） | P2 | ★★ | 無 | ✅ 2026-09-08 |
 | T45 | 行程頁欄寬微調：貼近花費頁寬度、縮減橫向捲動範圍 | P3 | ★ | T44（同欄位／同表格） | ✅ 2026-09-08 |
 | T46 | 行程景點下拉加入「出發地國家」（Trip 加 `originCountry`） | P1 | ★★ | 無（改到 T16 的 AttractionPicker） | ⬜ |
+| T47 | 景點庫新增表單：按鈕移到最下方獨立一列＋手機兩欄順序重排 | P2 | ★ | 無 | ⬜ |
+| T48 | 景點列表手機卡片式檢視（修「類型」欄手機被壓扁） | P1 | ★★★ | 無（建議 T47 後，同檔） | ⬜ |
 
 ## 共通守則（每個任務都適用）
 
@@ -1165,6 +1167,162 @@ export function citiesForCountries(
   4. 匯入一份**舊備份**（trip 無 `originCountry`）→ 該旅程總覽顯示「台灣」、行程頁兩組都在。
   5. 改出發地國家**不會**改動外幣名稱／代碼／匯率，也不會清掉目的地都市。
   6. 手機（`variant='stack'`）卡片展開後的都市下拉同樣有兩組。
+
+---
+
+## T47 景點庫新增表單：按鈕移到最下方獨立一列＋手機兩欄順序重排（P2・★・依賴：無）
+
+**背景／目標**：擁有者看桌面／手機截圖後回饋兩點（2026-09-09）——①「確定新增」按鈕目前擠在
+九宮格第一排最右格（T44 第二輪的做法），視覺上像一個欄位、與其他輸入框混在一起；
+②手機（`grid-cols-2`）下欄位配對順序不理想，且「網址」的名稱／連結兩框在半格寬度被迫上下堆疊
+（Code review 那輪為了避免壓扁而改的），佔掉兩行。
+
+**已拍板的版面（勿重新設計）**：
+
+- **按鈕**：從 grid 裡拿出來，放在整個「新增景點」表單**下方獨立一列、靠右對齊**；
+  `newName.trim()` 為空時的灰字提示「請先輸入景點名稱」放在按鈕**左邊**同一列（不再放按鈕下方）。
+- **手機（`< sm`，兩欄）由上而下**：
+  1. `國家` | `都市`
+  2. `區域` | `類型`
+  3. `景點名稱` | `詳細地址`
+  4. `網址`（**整排寬**，內部「名稱」與「連結」**左右並排**，不再上下堆疊）
+  5. `備註` | `優先度`
+  6. `確定新增`（獨立一列、靠右）
+- **桌面（`sm:grid-cols-5`）由上而下**（DOM 順序同上，靠 col-span 自然排成三排）：
+  1. `國家`(1) `都市`(1) `區域`(1) `類型`(1) `景點名稱`(1)
+  2. `詳細地址`(2) `網址`(3)
+  3. `備註`(2) `優先度`(3)
+  4. `確定新增`（grid 外、靠右）
+
+### 實作步驟（`src/pages/Attractions.tsx`，只動「新增景點」表單那一段）
+
+1. 把 `<div className="flex flex-col justify-end gap-1">`（含「確定新增」按鈕與提示 `<span>`）
+   **整塊從 grid 內移除**，改放在 grid 容器 `</div>` 之後：
+
+```tsx
+        </div>
+        <div className="mt-3 flex items-center justify-end gap-2">
+          {!newName.trim() && <span className="text-xs text-gray-400">請先輸入景點名稱</span>}
+          <button
+            onClick={addRow}
+            disabled={!newName.trim()}
+            className="rounded bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+          >
+            確定新增
+          </button>
+        </div>
+```
+2. grid 內的 DOM 順序調整為：國家 → 都市 → 區域 → 類型 → **景點名稱** → 詳細地址 → 網址 →
+   備註 → 優先度（就是把原本排在按鈕之後的「景點名稱」`<label>` 整塊往前搬到「類型」之後，
+   其餘順序不變）。
+3. col-span 調整（只有「網址」要改）：
+   - `景點名稱`：無 span（手機 1 格、桌面 1/5）——不變。
+   - `詳細地址`：`sm:col-span-2`——不變。
+   - `網址`：`sm:col-span-2` → **`col-span-2 sm:col-span-3`**（手機整排、桌面 3/5）。
+   - `備註`：`sm:col-span-2`／`優先度`：`sm:col-span-3`——不變。
+4. 「網址」內層改回**永遠左右並排**（手機已是整排寬，不再需要堆疊）：
+
+```tsx
+            <div className="flex gap-2">
+              <div className="w-24 shrink-0">
+                <TextInput value={newUrlName} placeholder="名稱" onChange={setNewUrlName} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <TextInput value={newUrl} placeholder="https://" onChange={setNewUrl} />
+              </div>
+            </div>
+```
+   （原 `flex flex-col gap-2 sm:flex-row` 與 `sm:w-24 sm:shrink-0` 那組 Code review 修正
+   可以退場——它是為了「半格寬」而存在，現在網址已佔整排。「連結留空時只有名稱不會儲存。」
+   的琥珀色提示**保留**。）
+
+**不要做**：不動 `addRow` 邏輯／必填驗證／datalist 級聯（`newCityOptions`／`newDistrictOptions`）／
+`serializeLink` 編碼／成功後「保留國家都市區域、清空其餘」的行為；不動篩選列、樹狀列表、
+`renderRows`（那是 T48）；不動 `cells.tsx`；無 schema／`src/lib`／備份變動。
+
+**驗收**：`npm run test`（155 綠）與 `npm run build` 全綠；用 Playwright 於 **360／390px 手機寬**
+與 **1400px 桌面**各截一次：
+- 手機六列順序與上表完全一致；「網址」的名稱／連結左右並排且都可正常輸入（名稱 96px、
+  連結填滿剩餘寬度）；整頁 `scrollWidth === clientWidth`（零橫向溢出）。
+- 桌面三排 5 欄對齊、「確定新增」在表單右下自成一列；空名稱時按鈕 disabled＋左側灰字提示。
+- 實際新增一筆（含網址名稱＋連結）確認寫入正確、成功後國家／都市／區域保留。
+
+---
+
+## T48 景點列表手機卡片式檢視（修「類型」欄被壓扁）（P1・★★★・依賴：無；建議 T47 之後做，同檔）
+
+**背景／目標**：景點庫的景點列到現在仍是**單一表格**（`renderRows`），手機下靠
+`overflow-x-auto` 橫向捲動觀看。擁有者截圖回報：「類型」表頭被壓成直排（一個字一行）、
+該欄的 `<Select>` 被壓到只剩幾 px **無法正確顯示／操作**（截圖橘色框）。根因是 auto table-layout
+在容器寬度不足時會壓縮彈性欄（同 T44 的技術發現）。已拍板**完整修**：比照行程（T31）／
+花費（T32）／行李（T39）／分帳（T38）改成 `sm` 斷點雙渲染，手機一筆一張卡片、徹底不橫捲。
+
+### 規格（`src/pages/Attractions.tsx`）
+
+1. **頂層 state**（放在 component 頂層，不可放 `renderRows` 內——同一頁會呼叫多次）：
+
+```tsx
+  // 手機卡片預設收合；新增走上方表單（資料已填完整），故不做「新增即展開」。
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const toggleExpand = (id: string) =>
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+```
+2. **`renderRows(list)` 改雙容器**（桌面表格 markup **一字不動**，只換外層）：
+
+```tsx
+  function renderRows(list: Attraction[]) {
+    return (
+      <>
+        <div className="hidden overflow-x-auto sm:block">
+          <table className="w-full min-w-[42rem] text-sm">{/* 原內容完全不動 */}</table>
+        </div>
+        <div className="divide-y sm:hidden">{list.map(renderCard)}</div>
+      </>
+    )
+  }
+```
+3. **`renderCard(a: Attraction)`**（新函式，放在 `renderRows` 之前）：
+   - 摘要列**沒有任何互動元素** → 依共通守則用 `<button type="button" aria-expanded={expanded}
+     onClick={() => toggleExpand(a.id)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50">`。
+   - 摘要內容（由左至右）：景點名（`a.name || '(未命名)'`，空值灰字，`flex-1 truncate`）→
+     `visitedIds.has(a.id)` 時綠色 `✓`（`shrink-0 text-emerald-600`，`title="已排入行程（去過）"`）→
+     `a.priority > 0` 時 `★`.repeat（`shrink-0 text-xs text-amber-500`，clamp 0–3 同 `PriorityStars`）→
+     類型標籤（`ATTRACTION_TYPES.find((t) => t.value === a.type)?.label`，未設則整個不顯示；
+     `shrink-0 text-xs text-gray-500`）→ `▼`／`▲`（`shrink-0 text-xs text-gray-400`）。
+   - 展開區 `<div className="space-y-2 border-t bg-gray-50/50 px-3 py-3">`，欄位一律沿用
+     `cells.tsx` 元件、handler 與桌面共用（`update(a.id, …)`）：
+     景點名稱 `TextInput`／詳細地址 `TextInput`／網址 `LinkField`／備註 `TextInput`／
+     優先度 `PriorityStars`／類型 `Select`（選項沿用 `ATTRACTION_TYPES` map，含「未設」）。
+     每列包在檔尾新增的 local `CardField`（`w-14` 標籤＋`min-w-0 flex-1` 欄位，抄
+     `ItineraryTab.tsx` 檔尾那個，`min-w-0` 不可省——見 Code review 那輪的溢出根因）。
+   - 展開區底部一列：`<div className="flex justify-end gap-2 pt-1">`，內含
+     「搬移」按鈕（`onClick={() => openMoveRow(a)}`，樣式抄桌面那顆
+     `rounded px-2 py-1 text-xs text-gray-500 hover:bg-sky-50 hover:text-sky-700`）與
+     「✕ 刪除這個景點」（`onClick={() => remove(a.id)}`，樣式抄 `ItineraryTab` 卡片刪除鈕
+     `rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50`；`remove` 是既有 async 函式、
+     含 T5 引用數防護，**不要改**）。
+4. **空狀態**：`renderRows` 的呼叫端本來就只在 `cityNode.direct.length > 0` 與非空的
+   `dn.list` 時呼叫，**不需要**空狀態雙容器（與 T31/T32 不同，別多做）。
+5. 檔尾新增 local `CardField` 元件（若 T47 已加就共用一個，不要重複宣告）。
+6. React import 視需要補 `useState`（檔案已有）與 `type ReactNode`。
+
+**不要做**：不動桌面表格的欄位、欄寬、`min-w-[42rem]`；不動樹狀節點標頭／摺疊狀態／
+「編輯國家／都市／區域」modal／DedupePanel／HealthPanel／篩選列／新增表單（T47 的範圍）；
+不動 `update`／`remove`／`openMoveRow`／`PriorityStars`／`LinkField`；
+無 schema／`src/lib` 純函式／備份變動（純 UI 任務，不新增測試）。
+
+**驗收**：`npm run test`（155 綠）與 `npm run build` 全綠；用 Playwright 建 3–4 筆合成景點
+（含一筆已排入行程的、一筆 priority 3 的、一筆類型「美食」的、一筆名稱留空的）後：
+- **360／390px 手機寬**：景點庫整頁 `scrollWidth === clientWidth`（零橫向捲動）；卡片摘要顯示
+  名稱＋✓＋★＋類型標籤且不重疊；點卡片展開後「類型」下拉**完整可見可操作**（原 bug 消失）、
+  改類型後即時寫入並反映在摘要標籤；「搬移」開 modal 正常、「✕ 刪除這個景點」仍跳 T5 的
+  引用數 confirm。
+- **1400px 桌面**：表格版與現況完全一致（欄位、欄寬、行為都不變）。
 
 ---
 
