@@ -63,7 +63,7 @@
 | T32 | 花費頁手機卡片式檢視 | ✅ 2026-07-15 |
 | T33 | 健檢擴充：成員孤兒參照 | ✅ 2026-07-15 |
 
-### 進行中（T34–T40，表列順序＝建議施工順序）
+### 進行中（T34–T46，表列順序＝建議施工順序）
 
 | # | 任務 | 優先 | 難度 | 依賴 | 狀態 |
 |---|------|------|------|------|------|
@@ -79,6 +79,7 @@
 | T43 | 景點庫新增改「完整表單＋確定」＋輸入框 datalist 級聯建議 | P2 | ★★ | 無 | ✅ 2026-09-07 |
 | T44 | 電腦版排版微調（總覽／花費／行程欄寬＋景點庫新增表單版面） | P2 | ★★ | 無 | ✅ 2026-09-08 |
 | T45 | 行程頁欄寬微調：貼近花費頁寬度、縮減橫向捲動範圍 | P3 | ★ | T44（同欄位／同表格） | ✅ 2026-09-08 |
+| T46 | 行程景點下拉加入「出發地國家」（Trip 加 `originCountry`） | P1 | ★★ | 無（改到 T16 的 AttractionPicker） | ⬜ |
 
 ## 共通守則（每個任務都適用）
 
@@ -947,8 +948,238 @@ T21 行李繼承（在 `TripList.tsx`）一律不動。
 
 ---
 
+## T46 行程景點下拉加入「出發地國家」（P1・★★・依賴：無；改到 T16 的 AttractionPicker）
+
+**背景／目標**：T16 把 `AttractionPicker` 的國家**完全鎖死**成旅程的目的地國家（`trip.country`），
+於是「出發地」的景點——桃園機場、機場捷運、台北車站、國內接駁點——在行程頁的景點下拉裡
+**永遠選不到**，但這些正是每趟旅程第一列與最後一列會用到的東西（擁有者回報）。
+
+**已拍板的設計決定（2026-09-09 討論，勿重新設計）**：
+
+1. `Trip` 新增欄位 **`originCountry`**（出發地國家），總覽頁多一個下拉／datalist 欄位。
+2. 讀取一律 `trip.originCountry ?? '台灣'`——**舊資料／舊備份沒有此欄 ⇒ 視為「台灣」**
+   （台灣使用者的預設情境，升級後立刻可用，不必逐趟補填）；使用者**手動清成空字串**則
+   視為「不設出發地」，行為退回目前（只剩目的地國家）。`??` 只吃 undefined，兩者可區分。
+3. **不升 Dexie 版**（新欄位無索引，同 T2 加 `trip.country`／T18 加 `endTime` 的先例）；
+   `backup.ts`／備份格式**零改動**（整物件序列化）。
+4. **幣別／匯率自動帶入只看目的地國家**——`onCountryChange` 完全不動，改出發地國家不會動到
+   `currencyCode`／`currencyLabel`／`exchangeRate`，也不清空都市。
+5. Picker 的國家**仍然鎖死**，只是從「一國」變成「目的地＋出發地兩國」——**不**把 T16 拿掉的
+   國家下拉加回來；未分類（`country` 為空）的景點依舊選不到（維持 T16「先去景點庫用未分類
+   節點批次補國家」的工作流）。
+6. 都市下拉在兩國各自都有都市時用 **optgroup 分「目的地（日本）／出發地（台灣）」兩組**；
+   只有一國有都市（或兩國同名、或出發地留空）時**不分組**，畫面與現在完全一樣。
+7. **已知小限制**：都市過濾是「以都市名稱字串比對」，若目的地與出發地兩國有**同名都市**，
+   選該都市會同時列出兩國的景點——罕見，不處理（景點下拉的 optgroup 這時會顯示完整
+   `國家 · 都市 · 區域`，看得出來是哪一國）。
+
+**涉及檔案**：`src/types.ts`、`src/lib/group.ts`（＋`group.test.ts`）、
+`src/components/AttractionPicker.tsx`、`src/components/trip/ItineraryTab.tsx`、
+`src/components/trip/OverviewTab.tsx`、`src/pages/TripList.tsx`。
+
+### A. 資料模型（`src/types.ts`）
+
+`Trip` 介面在 `city` 之後加一欄：
+
+```ts
+  originCountry: string // 出發地國家（T46；舊資料以 `?? '台灣'` 容錯，空字串＝不設出發地）
+```
+
+### B. 純函式（`src/lib/group.ts`，＋`src/lib/group.test.ts` 測試）
+
+**參考實作**（照抄，放在 `getLocationOptions` 之後）：
+
+```ts
+/**
+ * T46：AttractionPicker 要吃的國家清單——目的地優先、出發地次之，去空值與重複。
+ * 兩者皆空 → 回空陣列（＝不依國家過濾，維持 T16 `country=''` 的既有行為）。
+ */
+export function pickerCountries(country: string, originCountry: string): string[] {
+  const out: string[] = []
+  for (const c of [country, originCountry]) {
+    if (c && !out.includes(c)) out.push(c)
+  }
+  return out
+}
+
+/**
+ * T46：都市下拉選項，依 `countries` 順序**一國一組**（供 optgroup 使用）。
+ * `countries` 為空 → 回單一組 `{ country: '', cities: 全庫都市 }`（沿用 T16 的 fallback）。
+ * 各組 cities 去重＋zh-Hant 排序；該國沒有任何都市時仍回一組空陣列（呼叫端自行略過）。
+ */
+export function citiesForCountries(
+  attractions: Pick<Attraction, 'country' | 'city'>[],
+  countries: string[],
+): { country: string; cities: string[] }[] {
+  const sortZh = (a: string, b: string) => a.localeCompare(b, 'zh-Hant')
+  if (countries.length === 0) {
+    const set = new Set<string>()
+    for (const a of attractions) if (a.city) set.add(a.city)
+    return [{ country: '', cities: [...set].sort(sortZh) }]
+  }
+  return countries.map((c) => {
+    const set = new Set<string>()
+    for (const a of attractions) if (a.country === c && a.city) set.add(a.city)
+    return { country: c, cities: [...set].sort(sortZh) }
+  })
+}
+```
+
+**測試（7 條，加在 `group.test.ts`）**：`pickerCountries` 4 條（兩國都有→順序為
+[目的地, 出發地]／出發地空→只回目的地／兩者相同→去重成一個／兩者皆空→`[]`）；
+`citiesForCountries` 3 條（兩國分組且組內 zh-Hant 排序／`countries` 為空→單組全庫都市／
+某國在景點庫無都市→該組 `cities: []`）。
+
+### C. `src/components/AttractionPicker.tsx`
+
+1. Props 加 **`originCountry?: string`**（optional，預設 `''`——不傳的呼叫端行為完全不變）。
+2. 國家清單與都市選項改用新純函式：
+
+```tsx
+  const countries = useMemo(
+    () => pickerCountries(country, originCountry ?? ''),
+    [country, originCountry],
+  )
+  const cityGroups = useMemo(
+    () => citiesForCountries(attractions, countries),
+    [attractions, countries],
+  )
+  const cityOptions = useMemo(() => cityGroups.flatMap((g) => g.cities), [cityGroups])
+```
+   （`cityOptions` 只剩「`defaultCity` 初始化時判斷是否存在」這一個用途，維持既有 `useState`
+   初值邏輯不變；原本那段 `country ? opts.citiesByCountry.get(country) : 全庫都市` 整段刪除，
+   `getLocationOptions` 本身**不動**——景點庫頁還在用。）
+3. 過濾條件：`(!country || a.country === country)` 改為
+   **`(countries.length === 0 || countries.includes(a.country))`**（其餘 `fType`／`fCity` 不動）。
+4. `citySelect` 改成可分組（**參考實作**）：
+
+```tsx
+  const multiGroup = cityGroups.filter((g) => g.cities.length > 0).length > 1
+  const citySelect = (
+    <Select value={fCity} onChange={setFCity}>
+      <option value="">全部</option>
+      {multiGroup
+        ? cityGroups.map((g, i) =>
+            g.cities.length === 0 ? null : (
+              <optgroup key={g.country} label={`${i === 0 ? '目的地' : '出發地'}（${g.country}）`}>
+                {g.cities.map((c) => (
+                  <option key={`${g.country}-${c}`} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </optgroup>
+            ),
+          )
+        : cityGroups
+            .flatMap((g) => g.cities)
+            .map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+    </Select>
+  )
+```
+   （`i === 0` 就是目的地，因為 `pickerCountries` 的順序固定是 [目的地, 出發地]。）
+5. `groupLabel` 判斷順序改為（**兩國時一律顯示完整 label，避免同名都市／區域混淆**）：
+
+```tsx
+  function groupLabel(g: LocationGroup): string {
+    if (countries.length > 1) return g.label            // 國家 · 都市 · 區域
+    if (fCity) return g.district || '未分區'
+    if (countries.length === 1) return [g.city, g.district].filter(Boolean).join(' · ') || '未分類'
+    return g.label
+  }
+```
+6. `countryHasNothing` 改為
+   `countries.length > 0 && !attractions.some((a) => countries.includes(a.country))`，
+   disabled option 文字改「**景點庫尚無此旅程國家的景點**」。
+7. `variant='cells'` 三個 `<Td>` 欄寬（T45 定的 `w-20`／`w-24`／`min-w-[12rem]`）與
+   `variant='stack'` 版面**都不動**——都市下拉只是多了 optgroup 標題，寬度需求不變。
+
+### D. `src/components/trip/ItineraryTab.tsx`
+
+桌面 `renderRow` 與手機 `renderCard` 兩處 `<AttractionPicker ...>` 各加一個 prop：
+
+```tsx
+  originCountry={trip.originCountry ?? '台灣'}
+```
+其餘（`country`／`defaultCity`／`visitedIds`／`variant`）不動。
+
+### E. `src/components/trip/OverviewTab.tsx`
+
+1. 國家／都市那排 `grid grid-cols-1 gap-3 sm:grid-cols-2` 改 **`sm:grid-cols-3`**，
+   第三欄新增（欄位順序：國家／都市／出發地國家）：
+
+```tsx
+        <Field label="出發地國家">
+          <TextInput
+            value={trip.originCountry ?? '台灣'}
+            placeholder="例：台灣"
+            list="ov-origin-countries"
+            onChange={(v) => update({ originCountry: v })}
+          />
+          <datalist id="ov-origin-countries">
+            {opts.countries.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </Field>
+```
+   **注意**：`onChange` 只寫 `originCountry`——**不要**呼叫 `onCountryChange` 那套幣別／
+   匯率邏輯，也不要清空都市（已拍板決定 4）。
+2. 該排下方（舊 `region` 灰字那段附近）加一行灰字說明：
+
+```tsx
+      <p className="-mt-2 text-xs text-gray-400">
+        出發地國家的景點（例：桃園機場）也會出現在「行程」頁的景點下拉。留空＝只顯示目的地國家。
+      </p>
+```
+
+### F. `src/pages/TripList.tsx`
+
+`createTrip` 組 `Trip` 物件時加一欄（複製既有旅程時沿用來源的出發地）：
+
+```ts
+      originCountry: source?.originCountry ?? '台灣',
+```
+
+### 不要做
+
+- 不把國家下拉加回 `AttractionPicker`（T16 的鎖死設計仍算數，只是從一國變兩國）。
+- 不加「出發地都市」欄位（都市下拉已經能選）；不做「多個出發地／轉機國」清單。
+- 不動 `getLocationOptions`／`groupByLocation`／`buildLocationTree`／景點庫頁（`Attractions.tsx`）。
+- 不升 Dexie 版、不加索引、不改備份格式、不改 `exportItinerary.ts`。
+- 不動幣別／匯率邏輯（`currency.ts`、`onCountryChange`）、不動花費／分帳／行李頁。
+- 不改 T44／T45 定下的欄寬。
+
+### 驗收
+
+- `npm run test` 全綠（既有 155 ＋新增 7 條＝ **162**）、`npm run build` 全綠。
+- 手動（桌面＋手機寬度各一輪）：
+  1. 景點庫先建兩筆合成資料：`台灣／桃園／桃園機場（type: transport）`、`日本／大阪／大阪城`。
+  2. 目的地日本、出發地留預設「台灣」的旅程 → 行程頁都市下拉出現
+     **「目的地（日本）」「出發地（台灣）」兩組 optgroup**，選「桃園」能挑到桃園機場；
+     都市選「全部」時景點下拉的 optgroup 顯示完整 `台灣 · 桃園`／`日本 · 大阪`。
+  3. 總覽把「出發地國家」清空 → 行程頁回到只剩日本的都市、無 optgroup 分組（＝現況行為）。
+  4. 匯入一份**舊備份**（trip 無 `originCountry`）→ 該旅程總覽顯示「台灣」、行程頁兩組都在。
+  5. 改出發地國家**不會**改動外幣名稱／代碼／匯率，也不會清掉目的地都市。
+  6. 手機（`variant='stack'`）卡片展開後的都市下拉同樣有兩組。
+
+---
+
 ## 觀察中／不做
 
+- **先擱置（2026-09-09 討論，需求已提出但暫不排程）**：**行程列手動調整順序**——
+  目前同日是 T11 定的「依 `time` 升冪自動排序（空 `time` 沉底）→ 同時間退回 `sort`」，
+  與「手動排順序」天生衝突，必須先在下列三案中擇一拍板才能開工：
+  (a) **手動優先**：同日排序鍵改回純 `sort`，每列加 ↑↓ 上下移，日期組標題放一顆
+  「⇅ 依時間排序」按鈕（按一下把該日依時間重排一次）。需要一次性遷移：把現有列的 `sort`
+  依「目前顯示順序」重寫，升級當下畫面順序才不會亂跳。附帶好處：改時間不再即時跳位。
+  (b) **加模式開關**：`Trip` 多一個「行程排序：時間／手動」欄位，預設時間（舊行為零影響），
+  切到手動才出現 ↑↓。代價是兩套模式都要測、使用者要先懂這個開關。
+  (c) **拖曳排序**：手感最好，但要引入 dnd 套件或手寫 HTML5 drag，手機卡片式檢視的拖曳
+  與捲動衝突不小，與本專案「純函式＋簡單 UI」的調性較不合。
 - **觀察中（未排程）**：行程頁直接新增景點（picker 內開 modal）；當日景點串 Google Maps 路線；
   總覽頁旅程摘要卡；花費分類統計；T22「複製行程文字」輸出連結
   （T35 之後技術上可行——`linkDisplayText` 現成，擁有者尚未決定要不要加）。
