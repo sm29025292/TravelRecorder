@@ -8,6 +8,7 @@ export interface Trip {
   name: string
   country: string // 國家（T2 起連動景點庫下拉；舊資料以 '' 容錯）
   city: string // 都市（T2 起連動景點庫下拉；舊資料以 '' 容錯）
+  originCountry: string // 出發地國家（T46；舊資料以 `?? '台灣'` 容錯，空字串＝不設出發地）
   region: string // 舊自由文字欄，保留以相容舊備份／顯示參考
   startDate: string // YYYY-MM-DD
   endDate: string

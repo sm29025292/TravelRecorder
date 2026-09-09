@@ -61,18 +61,18 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 | `src/App.tsx` | HashRouter + 版面；路由 `/`、`/trip/:id`、`/attractions` |
 | `src/components/TopNav.tsx` | 上方導覽 + 匯出/匯入備份 |
 | `src/components/cells.tsx` | 共用輸入元件（`TextInput`/`NumberInput`/`Select`/`Th`/`Td`…，**聚焦緩衝**式） |
-| `src/components/AttractionPicker.tsx` | 行程用的景點三段式選擇器（T16 類型／都市內建篩選、國家由旅程鎖死；optgroup label 隨篩選狀態自組；含「目前選取」保底 optgroup 讓 `<select>` 永不空白；T29 起輸出三個 `<Td>` 作為表格獨立欄位「類型／都市／景點」） |
+| `src/components/AttractionPicker.tsx` | 行程用的景點三段式選擇器（T16 類型／都市內建篩選、國家由旅程鎖死——T46 起為「目的地＋出發地」兩國、兩國都有都市時都市下拉分 optgroup；optgroup label 隨篩選狀態自組；含「目前選取」保底 optgroup 讓 `<select>` 永不空白；T29 起輸出三個 `<Td>` 作為表格獨立欄位「類型／都市／景點」） |
 | `src/components/MemberSelect.tsx` | 付錢者下拉（成員清單） |
 | `src/components/ParticipantsPicker.tsx` | 分攤對象勾選 popover（空陣列＝全部均分） |
 | `src/pages/TripList.tsx` | 旅程清單（新增/開啟/刪除，刪除連帶清各表；新增以對話框輸入名稱＋出發/回程日期（T41 必填、回程≥出發）、選來源「全新空白／複製既有旅程」（複製帶入基本設定＋同行者＋行李）、可勾選帶入常用花費項目（T42，`DEFAULT_EXPENSE_ITEMS`、台幣）） |
 | `src/pages/TripDetail.tsx` | 單一旅程，分頁：總覽 / 花費 / 行程 / 分帳 / 行李 |
 | `src/components/trip/{OverviewTab,ExpensesTab,ItineraryTab,SettlementTab,PackingTab}.tsx` | 五個分頁內容 |
-| `src/pages/Attractions.tsx` | 景點庫（T4 樹狀階層：國家→都市→區域可摺疊，節點「編輯」以 modal 批次改子樹位置；表格移除國家/都市/區域欄，改以「搬移」按鈕移動單列；級聯篩選＋類型 CRUD、「匯入 CSV」） |
+| `src/pages/Attractions.tsx` | 景點庫（T4 樹狀階層：國家→都市→區域可摺疊，節點「編輯」以 modal 批次改子樹位置；表格移除國家/都市/區域欄，改以「搬移」按鈕移動單列；級聯篩選＋類型 CRUD、「匯入 CSV」；T43 新增景點完整表單＋T47 版面、T48 景點列 `sm` 以下改手機卡片） |
 | `.github/workflows/deploy.yml` | GitHub Pages 自動部署 |
 
 ## 5. 資料模型（詳見 `src/types.ts`）
 
-- **Trip**：`name, country, city, region, startDate, endDate, currencyCode, currencyLabel, exchangeRate, peopleCount`。`country`/`city` 為 T2 起連動景點庫的下拉欄；`region` 為舊自由文字欄，保留以相容舊備份／顯示參考；`peopleCount` 自 T20 起無 UI（花費平均改用分帳成員數），欄位保留以相容舊備份。
+- **Trip**：`name, country, city, originCountry, region, startDate, endDate, currencyCode, currencyLabel, exchangeRate, peopleCount`。`originCountry` 為 T46 的出發地國家（行程景點下拉會同時吃目的地＋出發地兩國；讀取一律 `?? '台灣'`，空字串＝不設出發地）。`country`/`city` 為 T2 起連動景點庫的下拉欄；`region` 為舊自由文字欄，保留以相容舊備份／顯示參考；`peopleCount` 自 T20 起無 UI（花費平均改用分帳成員數），欄位保留以相容舊備份。
 - **Attraction**（全域）：`country`（國家）, `city`（都市）, `district`（區域）, `name, address`（詳細地址）, `url, notes, priority, type`（`'attraction'|'food'|''`）。**分組鍵＝國家＋都市＋區域**。
 - **ExpenseItem**：`tripId, date, time, item, currency, amount, fee, paid, paidBy, payerId?, participantIds?, paymentStatus, notes, sort`。
 - **ItineraryItem**：`tripId, date, time, endTime?, attractionId, activity, hours, transportCost, activityCost, paidBy, payerId?, participantIds?, notes, link, sort`。`time`＝開始（HH:MM），`endTime?` 為結束（optional 相容舊資料）；兩者皆填且 `end > start` 時 `hours` 由 `hoursBetween` 自動帶入（可手動覆寫）。
@@ -798,6 +798,73 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   台幣→`交通(元)`、名稱留空→`交通(元)`，三欄皆 `scrollWidth === clientWidth`（無裁切，
   交通／花費欄 80px、小計欄 64px 皆足夠）；390px 手機卡片同樣顯示 `交通(円)`／`花費(円)`／
   `小計(円) 1,700（台幣 357）` 且無橫向溢出。全 155 綠、build 通過。
+- ✅ **T46 行程景點下拉加入「出發地國家」**（2026-09-09）：T16 把 `AttractionPicker` 的國家鎖死成
+  `trip.country`（目的地），出發地（國內）的景點——桃園機場、機場捷運等——在行程頁完全選不到。
+  `src/types.ts` 的 `Trip` 加 `originCountry: string`（**不升 Dexie**，無索引欄位免升版，同 T2 加
+  `trip.country`／T18 加 `endTime` 的先例；`backup.ts` 零改動）；全 App 讀取一律
+  `trip.originCountry ?? '台灣'`——`??` 只吃 undefined，所以**舊資料／舊備份視為台灣**（升級即可用、
+  不必逐趟補填），使用者手動清成空字串則視為「不設出發地」、行為退回只有目的地。
+  `src/lib/group.ts` 新增兩支純函式：`pickerCountries(country, originCountry)`（去空值去重、
+  順序固定 [目的地, 出發地]，兩者皆空回 `[]`＝不依國家過濾）與 `citiesForCountries(attractions, countries)`
+  （依 countries 順序一國一組供 optgroup 用；`countries` 為空回單一組全庫都市；各組去重＋zh-Hant 排序）。
+  `AttractionPicker.tsx`：Props 加 optional `originCountry?: string`（不傳＝行為不變）；`countries`／
+  `cityGroups` 以 `useMemo` 算出，`cityOptions` 僅保留給 `defaultCity` 初始化判斷；過濾條件由
+  `(!country || a.country === country)` 改 `(countries.length === 0 || countries.includes(a.country))`；
+  都市下拉在**兩國各自都有都市**時以 optgroup 分「目的地（X）／出發地（Y）」（`i === 0` 即目的地，
+  因 `pickerCountries` 順序固定），只有一組有都市時維持平鋪 option（畫面與改版前相同）；
+  `groupLabel` 最前面加 `countries.length > 1 → g.label`（兩國時一律顯示完整「國家 · 都市 · 區域」，
+  避免同名都市／區域混淆），其餘分支沿用 T16；`countryHasNothing` 改判斷整個 `countries`、
+  disabled option 文字改「景點庫尚無此旅程國家的景點」。`ItineraryTab.tsx` 桌面 `renderRow` 與手機
+  `renderCard` 兩處呼叫各加 `originCountry={trip.originCountry ?? '台灣'}`；`OverviewTab.tsx` 國家／都市
+  那排由 `sm:grid-cols-2` 改 `sm:grid-cols-3`、第三欄新增「出發地國家」（`TextInput`＋datalist
+  `ov-origin-countries`，`onChange` **只寫 `originCountry`**——不碰 `onCountryChange` 的幣別／匯率
+  邏輯、不清都市），下方加灰字說明；`TripList.tsx` 的 `createTrip` 加 `originCountry: source?.originCountry ?? '台灣'`。
+  **不動**：`getLocationOptions`／`groupByLocation`／`buildLocationTree`／景點庫頁／`currency.ts`／
+  T44–T45 的欄寬。＋7 條 `group.test.ts` 測試（`pickerCountries` 4、`citiesForCountries` 3）→ 全 162 綠、
+  build 通過。以 Playwright（Chromium）實測：目的地日本＋出發地台灣時都市下拉出現
+  「目的地（日本）」「出發地（台灣）」兩組、選「桃園」可挑到桃園機場、都市選「全部」時景點 optgroup
+  顯示 `日本 · 大阪 · 心齋橋`／`台灣 · 桃園`；清空出發地後只剩日本且無 optgroup；改出發地不動外幣名稱
+  （仍為「日元」）；手機 390px 的 `variant='stack'` 同樣有兩組且零橫向溢出；把 IndexedDB 內某 trip 的
+  `originCountry` 欄位整個刪掉（模擬舊備份）後重新整理，總覽顯示「台灣」、行程頁照樣看得到台灣的景點。
+- ✅ **T47 景點庫新增表單：按鈕移到最下方獨立一列＋手機兩欄順序重排**（2026-09-09）：全部在
+  `src/pages/Attractions.tsx` 的「新增景點」表單區塊。①「確定新增」按鈕與「請先輸入景點名稱」提示
+  整組移出 grid，改放 grid 之後的 `<div className="mt-3 flex items-center justify-start gap-2">`
+  ——**按鈕靠左自成一列、提示在按鈕右側同一列**（取代 T44 第二輪「塞進九宮格第一排最右格」的做法，
+  該格視覺上像一個欄位、與輸入框混淆；靠左／提示在右是 2026-09-09 擁有者看桌面截圖後拍板，
+  取代同日稍早先做的「靠右／提示在左」）。②DOM 順序把「景點名稱」往前搬到「類型」之後，於是
+  手機（`grid-cols-2`）由上而下成為 `國家|都市` → `區域|類型` → `景點名稱|詳細地址` → `網址`（整排）
+  → `備註|優先度` → 按鈕；桌面（`sm:grid-cols-5`）自然排成三排各滿 5 欄：
+  國家/都市/區域/類型/景點名稱、詳細地址(2)+網址(3)、備註(2)+優先度(3)。③網址欄 `sm:col-span-2`
+  改 `col-span-2 sm:col-span-3`（**手機整排寬是關鍵**——不加 `col-span-2`，後面的備註／優先度會錯位配對），
+  內層由 Code review 那輪的 `flex flex-col gap-2 sm:flex-row`＋`sm:w-24 sm:shrink-0` 改回**永遠左右並排**
+  `flex gap-2`＋`w-24 shrink-0`（當初上下堆疊只是為了半格寬，現已整排）。`addRow`／必填驗證／
+  datalist 級聯／`serializeLink` 編碼／成功後「保留國家都市區域、清空其餘」全未動；無 schema／
+  `src/lib`／備份變動、無新測試。以 Playwright 實測 360／390px：六列順序與規格一致、網址名稱框 96px
+  ＋連結框 206／236px 同一行、按鈕在 grid 下方（靠左，左緣距表單左緣 13px＝容器內距）、提示在按鈕
+  右側同列、整頁 `scrollWidth === clientWidth`（零橫向溢出）；1400px 桌面三排 5 欄、按鈕同樣靠左；
+  實際新增一筆（含網址名稱＋連結）確認國家/都市/區域保留、其餘欄位清空。
+- ✅ **T48 景點列表手機卡片式檢視（修「類型」欄手機被壓扁）**（2026-09-09）：景點庫的景點列先前只有
+  單一表格（`min-w-[42rem]`＋`overflow-x-auto`），手機下 auto table-layout 為了塞下各欄的
+  `min-w-[8rem]`／`min-w-[10rem]` 提示，把固定寬的「優先度」「類型」壓到提示以下——「類型」表頭被擠成
+  直排、該欄 `<Select>` 只剩幾 px 無法操作（擁有者截圖回報；根因同 T44 記錄的技術發現）。
+  `src/pages/Attractions.tsx` 依 T31／T32／T38／T39 的既有模式改 `sm`（640px）斷點雙渲染：
+  `renderRows` 由「一個 `overflow-x-auto` 包表格」改為 fragment 包**桌面 `hidden overflow-x-auto sm:block`
+  （原表格 markup 一字未動、欄寬照舊）＋手機 `divide-y sm:hidden` 卡片群**；新增 `renderCard(a)`——
+  摘要列無任何互動元素故用 `<button type="button" aria-expanded>`（共通守則），內容為
+  名稱（空→灰字「(未命名)」、`min-w-0 flex-1 truncate`）＋`visitedIds` 命中時綠色 ✓＋`priority` 的
+  `★`.repeat（clamp 0–3）＋類型標籤（查 `ATTRACTION_TYPES`，未設不顯示）＋▼／▲；展開後直向表單
+  （檔尾新增 local `CardField`，`w-14` 標籤＋`min-w-0 flex-1` 欄位）依序為 景點名稱／地址／網址（`LinkField`）／
+  備註／優先度（`PriorityStars`）／類型（`Select`），底部右側「搬移」＋「✕ 刪除這個景點」。
+  **`expandedIds`／`toggleExpand` 放在 component 頂層**——`renderRows` 一頁會被每個都市／區域節點呼叫
+  多次，state 放進該函式會每次重建而失效；新增走上方表單（資料已填完整）故不做「新增即展開」；
+  呼叫端本就只在非空清單呼叫，因此**不需要**空狀態雙容器。`update`／`remove`（含 T5 引用數防護）／
+  `openMoveRow`／樹狀節點標頭／摺疊狀態／DedupePanel／HealthPanel／篩選列全未動；無 schema／
+  `src/lib` 純函式／備份變動、無新測試。以 Playwright 實測：1400px 桌面表格照舊可見、卡片群隱藏、
+  網址欄顯示「官網」超連結（href 正確）；360／390px 表格隱藏、卡片摘要顯示
+  「大阪城 ✓ ★★★ 景點」「蟹道樂 美食」「難波飯店 住宿」、整頁 `scrollWidth === clientWidth`（零橫向捲動）；
+  展開後「類型」下拉寬 276px **完整可見可操作**（原 bug 消失），改成「美食」後摘要標籤即時更新；
+  展開狀態下仍無橫向溢出；被行程引用的景點按刪除仍跳 T5 的「此景點被 1 筆行程使用…」confirm、
+  取消後不刪；「搬移」正常開啟「搬移景點」modal。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
@@ -821,8 +888,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 專案**聚焦「景點庫＋行程」兩大核心**。具體任務拆解在 **`ISSUE_LIST.md`**——後續 session 接手開發時，
 **先讀本檔、再挑 ISSUE_LIST.md 的任務執行**。第一～三輪 T1–T33 已全數完成（規格歸檔，見 §7）；
 第四輪 T34–T39（2026-07-17 定案並經互動示意頁確認）與其後陸續追加的 T40–T45 亦已完成；
-**目前待實作的是 T46–T48**（行程景點下拉加入「出發地國家」、景點庫新增表單版面調整、
-景點列表手機卡片式檢視；均為 2026-09-09 與擁有者討論定案）。
+**現行第五輪 T46–T48**（2026-09-09 與擁有者討論定案）：**T46／T47／T48 皆已完成**。
 各任務規格以「較低階模型可直接接手」為基準撰寫，設計決定均已拍板、勿重新設計，關鍵新程式碼附參考實作。
 
 - **範疇決策**：
@@ -945,7 +1011,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
     `div role="button"`＋`onKeyDown` Enter/Space；勾選框 `onClick e.stopPropagation()`；項目名
     劃線灰字比照桌面、`quantity !== 0` 才顯示、備註第二行截斷灰字；展開後三欄＋刪除；`addRow`／
     `update`／`remove`／T21 繼承邏輯全未動）。
-  - **T46 行程景點下拉加入「出發地國家」**（2026-09-09 定案，⬜ 待實作，規格見 ISSUE_LIST.md）：
+  - **T46 行程景點下拉加入「出發地國家」**（✅ 2026-09-09，實作摘要見 §7）：
     T16 把 `AttractionPicker` 的國家鎖死成 `trip.country`（目的地），導致出發地（國內）的景點
     ——桃園機場、機場捷運等——在行程頁完全選不到。拍板做法：`Trip` 加 `originCountry` 欄位
     （總覽頁多一欄下拉，讀取一律 `?? '台灣'`＝舊資料視為台灣、清成空字串＝不設出發地），
@@ -953,14 +1019,14 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
     都市下拉在兩國都有都市時以 optgroup 分「目的地（X）／出發地（Y）」。國家下拉**不**加回來
     （T16 鎖死設計仍算數）；幣別／匯率自動帶入只看目的地國家；不升 Dexie、備份零改動；
     新增 `src/lib/group.ts` 純函式 `pickerCountries`／`citiesForCountries`＋7 條測試。
-  - **T47 景點庫新增表單版面調整**（2026-09-09 定案，⬜ 待實作，規格見 ISSUE_LIST.md）：
+  - **T47 景點庫新增表單版面調整**（✅ 2026-09-09，實作摘要見 §7）：
     「確定新增」按鈕由 T44 第二輪的「九宮格第一排最右格」移到**表單下方獨立一列、靠右**
     （「請先輸入景點名稱」提示移到按鈕左側同列）；手機（`grid-cols-2`）順序改為
     國家|都市 → 區域|類型 → 景點名稱|詳細地址 → 網址（整排寬、名稱與連結左右並排）→
     備註|優先度 → 按鈕；桌面（`sm:grid-cols-5`）順勢變成三排 5 欄
     （國家/都市/區域/類型/景點名稱、詳細地址(2)+網址(3)、備註(2)+優先度(3)）。
     網址欄因改為整排寬，Code review 那輪的「手機上下堆疊」`sm:flex-row` 可退場。純版面。
-  - **T48 景點列表手機卡片式檢視**（2026-09-09 定案，⬜ 待實作，規格見 ISSUE_LIST.md）：
+  - **T48 景點列表手機卡片式檢視**（✅ 2026-09-09，實作摘要見 §7）：
     景點庫的景點列到目前仍是單一表格，手機下「類型」表頭被壓成直排、該欄 `<Select>` 被壓到
     幾 px 無法操作（擁有者截圖回報；根因同 T44 的 auto table-layout 壓縮彈性欄）。
     比照 T31／T32／T38／T39 改 `sm` 斷點雙渲染：`renderRows` 拆桌面表格（markup 不動）＋

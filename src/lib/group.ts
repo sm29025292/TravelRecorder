@@ -136,3 +136,37 @@ export function getLocationOptions(attractions: Attraction[]): {
     ),
   }
 }
+
+/**
+ * T46：AttractionPicker 要吃的國家清單——目的地優先、出發地次之，去空值與重複。
+ * 兩者皆空回空陣列（＝不依國家過濾，維持 T16 `country=''` 的既有行為）。
+ */
+export function pickerCountries(country: string, originCountry: string): string[] {
+  const out: string[] = []
+  for (const c of [country, originCountry]) {
+    if (c && !out.includes(c)) out.push(c)
+  }
+  return out
+}
+
+/**
+ * T46：都市下拉選項，依 `countries` 順序**一國一組**（供 optgroup 使用）。
+ * `countries` 為空 → 回單一組 `{ country: '', cities: 全庫都市 }`（沿用 T16 的 fallback）。
+ * 各組 cities 去重＋zh-Hant 排序；該國沒有任何都市時仍回一組空陣列（呼叫端自行略過）。
+ */
+export function citiesForCountries(
+  attractions: Pick<Attraction, 'country' | 'city'>[],
+  countries: string[],
+): { country: string; cities: string[] }[] {
+  const sortZh = (a: string, b: string) => a.localeCompare(b, 'zh-Hant')
+  if (countries.length === 0) {
+    const set = new Set<string>()
+    for (const a of attractions) if (a.city) set.add(a.city)
+    return [{ country: '', cities: [...set].sort(sortZh) }]
+  }
+  return countries.map((c) => {
+    const set = new Set<string>()
+    for (const a of attractions) if (a.country === c && a.city) set.add(a.city)
+    return { country: c, cities: [...set].sort(sortZh) }
+  })
+}

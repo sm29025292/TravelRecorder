@@ -78,7 +78,7 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
       <Field label="旅程名稱">
         <TextInput value={trip.name} onChange={(v) => update({ name: v })} />
       </Field>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="國家">
           <TextInput
             value={country}
@@ -105,7 +105,23 @@ export default function OverviewTab({ trip }: { trip: Trip }) {
             ))}
           </datalist>
         </Field>
+        <Field label="出發地國家">
+          <TextInput
+            value={trip.originCountry ?? '台灣'}
+            placeholder="例：台灣"
+            list="ov-origin-countries"
+            onChange={(v) => update({ originCountry: v })}
+          />
+          <datalist id="ov-origin-countries">
+            {opts.countries.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </Field>
       </div>
+      <p className="-mt-2 text-xs text-gray-400">
+        出發地國家的景點（例：桃園機場）也會出現在「行程」頁的景點下拉。留空＝只顯示目的地國家。
+      </p>
       {trip.region && !country && (
         <p className="-mt-2 text-xs text-gray-400">舊地區欄：{trip.region}</p>
       )}
