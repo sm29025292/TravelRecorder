@@ -1,4 +1,11 @@
-import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import {
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../db/db'
@@ -141,6 +148,18 @@ export default function Attractions() {
   const [collapsedCountries, setCollapsedCountries] = useState<Set<string>>(new Set())
   const [expandedCities, setExpandedCities] = useState<Set<string>>(new Set())
   const [editing, setEditing] = useState<EditTarget | null>(null)
+
+  // T48 手機卡片展開狀態：**必須放在 component 頂層**——`renderRows` 一頁會被每個
+  // 都市／區域節點呼叫多次，state 放進該函式會每次重建而失效。
+  // 新增走上方表單（資料已填完整），故不做「新增即展開」。
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const toggleExpand = (id: string) =>
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
 
   // 整理重複景點面板
   const [dedupeOpen, setDedupeOpen] = useState(false)
@@ -343,10 +362,93 @@ export default function Attractions() {
     })
   }
 
-  // 表格：不含國家/都市/區域欄
+  // T48 手機卡片：摘要（名稱＋✓＋★＋類型）＋展開後的完整編輯欄位
+  function renderCard(a: Attraction) {
+    const expanded = expandedIds.has(a.id)
+    const stars = '★'.repeat(Math.min(3, Math.max(0, a.priority | 0)))
+    const typeLabel = ATTRACTION_TYPES.find((t) => t.value === a.type)?.label ?? ''
+    return (
+      <div key={a.id}>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => toggleExpand(a.id)}
+          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+        >
+          <span className={`min-w-0 flex-1 truncate ${a.name ? '' : 'text-gray-400'}`}>
+            {a.name || '(未命名)'}
+          </span>
+          {visitedIds.has(a.id) && (
+            <span title="已排入行程（去過）" className="shrink-0 font-bold text-emerald-600">
+              ✓
+            </span>
+          )}
+          {stars && <span className="shrink-0 text-xs text-amber-500">{stars}</span>}
+          {typeLabel && <span className="shrink-0 text-xs text-gray-500">{typeLabel}</span>}
+          <span className="shrink-0 text-xs text-gray-400">{expanded ? '▲' : '▼'}</span>
+        </button>
+        {expanded && (
+          <div className="space-y-2 border-t bg-gray-50/50 px-3 py-3">
+            <CardField label="景點名稱">
+              <TextInput value={a.name} onChange={(v) => update(a.id, { name: v })} />
+            </CardField>
+            <CardField label="地址">
+              <TextInput value={a.address} onChange={(v) => update(a.id, { address: v })} />
+            </CardField>
+            <CardField label="網址">
+              <LinkField value={a.url} onChange={(v) => update(a.id, { url: v })} />
+            </CardField>
+            <CardField label="備註">
+              <TextInput value={a.notes} onChange={(v) => update(a.id, { notes: v })} />
+            </CardField>
+            <CardField label="優先度">
+              <span className="inline-block">
+                <PriorityStars
+                  value={a.priority}
+                  onChange={(n) => update(a.id, { priority: n })}
+                />
+              </span>
+            </CardField>
+            <CardField label="類型">
+              <Select
+                value={a.type ?? ''}
+                onChange={(v) => update(a.id, { type: v as Attraction['type'] })}
+              >
+                <option value="">未設</option>
+                {ATTRACTION_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </Select>
+            </CardField>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => openMoveRow(a)}
+                className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-sky-50 hover:text-sky-700"
+              >
+                搬移
+              </button>
+              <button
+                type="button"
+                onClick={() => remove(a.id)}
+                className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+              >
+                ✕ 刪除這個景點
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // 桌面表格（不含國家/都市/區域欄）＋手機卡片雙渲染（T48）
   function renderRows(list: Attraction[]) {
     return (
-      <div className="overflow-x-auto">
+      <>
+        <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[42rem] text-sm">
           <thead className="text-left text-xs text-gray-500">
             <tr>
@@ -420,7 +522,9 @@ export default function Attractions() {
             ))}
           </tbody>
         </table>
-      </div>
+        </div>
+        <div className="divide-y sm:hidden">{list.map(renderCard)}</div>
+      </>
     )
   }
 
@@ -1356,5 +1460,15 @@ function HealthPanel({
         </div>
       </div>
     </div>
+  )
+}
+
+/** T48 手機卡片的單列欄位（標籤＋欄位），抄 ItineraryTab.tsx 檔尾同名元件。 */
+function CardField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <span className="w-14 shrink-0 text-xs text-gray-500">{label}</span>
+      <span className="min-w-0 flex-1">{children}</span>
+    </label>
   )
 }
