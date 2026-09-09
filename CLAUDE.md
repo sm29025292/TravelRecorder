@@ -826,6 +826,21 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   顯示 `日本 · 大阪 · 心齋橋`／`台灣 · 桃園`；清空出發地後只剩日本且無 optgroup；改出發地不動外幣名稱
   （仍為「日元」）；手機 390px 的 `variant='stack'` 同樣有兩組且零橫向溢出；把 IndexedDB 內某 trip 的
   `originCountry` 欄位整個刪掉（模擬舊備份）後重新整理，總覽顯示「台灣」、行程頁照樣看得到台灣的景點。
+- ✅ **T47 景點庫新增表單：按鈕移到最下方獨立一列＋手機兩欄順序重排**（2026-09-09）：全部在
+  `src/pages/Attractions.tsx` 的「新增景點」表單區塊。①「確定新增」按鈕與「請先輸入景點名稱」提示
+  整組移出 grid，改放 grid 之後的 `<div className="mt-3 flex items-center justify-end gap-2">`
+  ——按鈕靠右自成一列、提示在按鈕左側同一列（取代 T44 第二輪「塞進九宮格第一排最右格」的做法，
+  該格視覺上像一個欄位、與輸入框混淆）。②DOM 順序把「景點名稱」往前搬到「類型」之後，於是
+  手機（`grid-cols-2`）由上而下成為 `國家|都市` → `區域|類型` → `景點名稱|詳細地址` → `網址`（整排）
+  → `備註|優先度` → 按鈕；桌面（`sm:grid-cols-5`）自然排成三排各滿 5 欄：
+  國家/都市/區域/類型/景點名稱、詳細地址(2)+網址(3)、備註(2)+優先度(3)。③網址欄 `sm:col-span-2`
+  改 `col-span-2 sm:col-span-3`（**手機整排寬是關鍵**——不加 `col-span-2`，後面的備註／優先度會錯位配對），
+  內層由 Code review 那輪的 `flex flex-col gap-2 sm:flex-row`＋`sm:w-24 sm:shrink-0` 改回**永遠左右並排**
+  `flex gap-2`＋`w-24 shrink-0`（當初上下堆疊只是為了半格寬，現已整排）。`addRow`／必填驗證／
+  datalist 級聯／`serializeLink` 編碼／成功後「保留國家都市區域、清空其餘」全未動；無 schema／
+  `src/lib`／備份變動、無新測試。以 Playwright 實測 360／390px：六列順序與規格一致、網址名稱框 96px
+  ＋連結框 206／236px 同一行、按鈕在 grid 下方靠右、整頁 `scrollWidth === clientWidth`（零橫向溢出）；
+  1400px 桌面三排 5 欄；實際新增一筆（含網址名稱＋連結）確認國家/都市/區域保留、其餘欄位清空。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
@@ -849,7 +864,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 專案**聚焦「景點庫＋行程」兩大核心**。具體任務拆解在 **`ISSUE_LIST.md`**——後續 session 接手開發時，
 **先讀本檔、再挑 ISSUE_LIST.md 的任務執行**。第一～三輪 T1–T33 已全數完成（規格歸檔，見 §7）；
 第四輪 T34–T39（2026-07-17 定案並經互動示意頁確認）與其後陸續追加的 T40–T45 亦已完成；
-**現行第五輪 T46–T48**（2026-09-09 與擁有者討論定案）：T46 ✅ 已完成，T47／T48 待實作。
+**現行第五輪 T46–T48**（2026-09-09 與擁有者討論定案）：T46／T47 ✅ 已完成，T48 待實作。
 各任務規格以「較低階模型可直接接手」為基準撰寫，設計決定均已拍板、勿重新設計，關鍵新程式碼附參考實作。
 
 - **範疇決策**：
@@ -980,7 +995,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
     都市下拉在兩國都有都市時以 optgroup 分「目的地（X）／出發地（Y）」。國家下拉**不**加回來
     （T16 鎖死設計仍算數）；幣別／匯率自動帶入只看目的地國家；不升 Dexie、備份零改動；
     新增 `src/lib/group.ts` 純函式 `pickerCountries`／`citiesForCountries`＋7 條測試。
-  - **T47 景點庫新增表單版面調整**（2026-09-09 定案，⬜ 待實作，規格見 ISSUE_LIST.md）：
+  - **T47 景點庫新增表單版面調整**（✅ 2026-09-09，實作摘要見 §7）：
     「確定新增」按鈕由 T44 第二輪的「九宮格第一排最右格」移到**表單下方獨立一列、靠右**
     （「請先輸入景點名稱」提示移到按鈕左側同列）；手機（`grid-cols-2`）順序改為
     國家|都市 → 區域|類型 → 景點名稱|詳細地址 → 網址（整排寬、名稱與連結左右並排）→
