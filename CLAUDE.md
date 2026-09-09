@@ -798,6 +798,34 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   台幣→`交通(元)`、名稱留空→`交通(元)`，三欄皆 `scrollWidth === clientWidth`（無裁切，
   交通／花費欄 80px、小計欄 64px 皆足夠）；390px 手機卡片同樣顯示 `交通(円)`／`花費(円)`／
   `小計(円) 1,700（台幣 357）` 且無橫向溢出。全 155 綠、build 通過。
+- ✅ **T46 行程景點下拉加入「出發地國家」**（2026-09-09）：T16 把 `AttractionPicker` 的國家鎖死成
+  `trip.country`（目的地），出發地（國內）的景點——桃園機場、機場捷運等——在行程頁完全選不到。
+  `src/types.ts` 的 `Trip` 加 `originCountry: string`（**不升 Dexie**，無索引欄位免升版，同 T2 加
+  `trip.country`／T18 加 `endTime` 的先例；`backup.ts` 零改動）；全 App 讀取一律
+  `trip.originCountry ?? '台灣'`——`??` 只吃 undefined，所以**舊資料／舊備份視為台灣**（升級即可用、
+  不必逐趟補填），使用者手動清成空字串則視為「不設出發地」、行為退回只有目的地。
+  `src/lib/group.ts` 新增兩支純函式：`pickerCountries(country, originCountry)`（去空值去重、
+  順序固定 [目的地, 出發地]，兩者皆空回 `[]`＝不依國家過濾）與 `citiesForCountries(attractions, countries)`
+  （依 countries 順序一國一組供 optgroup 用；`countries` 為空回單一組全庫都市；各組去重＋zh-Hant 排序）。
+  `AttractionPicker.tsx`：Props 加 optional `originCountry?: string`（不傳＝行為不變）；`countries`／
+  `cityGroups` 以 `useMemo` 算出，`cityOptions` 僅保留給 `defaultCity` 初始化判斷；過濾條件由
+  `(!country || a.country === country)` 改 `(countries.length === 0 || countries.includes(a.country))`；
+  都市下拉在**兩國各自都有都市**時以 optgroup 分「目的地（X）／出發地（Y）」（`i === 0` 即目的地，
+  因 `pickerCountries` 順序固定），只有一組有都市時維持平鋪 option（畫面與改版前相同）；
+  `groupLabel` 最前面加 `countries.length > 1 → g.label`（兩國時一律顯示完整「國家 · 都市 · 區域」，
+  避免同名都市／區域混淆），其餘分支沿用 T16；`countryHasNothing` 改判斷整個 `countries`、
+  disabled option 文字改「景點庫尚無此旅程國家的景點」。`ItineraryTab.tsx` 桌面 `renderRow` 與手機
+  `renderCard` 兩處呼叫各加 `originCountry={trip.originCountry ?? '台灣'}`；`OverviewTab.tsx` 國家／都市
+  那排由 `sm:grid-cols-2` 改 `sm:grid-cols-3`、第三欄新增「出發地國家」（`TextInput`＋datalist
+  `ov-origin-countries`，`onChange` **只寫 `originCountry`**——不碰 `onCountryChange` 的幣別／匯率
+  邏輯、不清都市），下方加灰字說明；`TripList.tsx` 的 `createTrip` 加 `originCountry: source?.originCountry ?? '台灣'`。
+  **不動**：`getLocationOptions`／`groupByLocation`／`buildLocationTree`／景點庫頁／`currency.ts`／
+  T44–T45 的欄寬。＋7 條 `group.test.ts` 測試（`pickerCountries` 4、`citiesForCountries` 3）→ 全 162 綠、
+  build 通過。以 Playwright（Chromium）實測：目的地日本＋出發地台灣時都市下拉出現
+  「目的地（日本）」「出發地（台灣）」兩組、選「桃園」可挑到桃園機場、都市選「全部」時景點 optgroup
+  顯示 `日本 · 大阪 · 心齋橋`／`台灣 · 桃園`；清空出發地後只剩日本且無 optgroup；改出發地不動外幣名稱
+  （仍為「日元」）；手機 390px 的 `variant='stack'` 同樣有兩組且零橫向溢出；把 IndexedDB 內某 trip 的
+  `originCountry` 欄位整個刪掉（模擬舊備份）後重新整理，總覽顯示「台灣」、行程頁照樣看得到台灣的景點。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
@@ -821,8 +849,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 專案**聚焦「景點庫＋行程」兩大核心**。具體任務拆解在 **`ISSUE_LIST.md`**——後續 session 接手開發時，
 **先讀本檔、再挑 ISSUE_LIST.md 的任務執行**。第一～三輪 T1–T33 已全數完成（規格歸檔，見 §7）；
 第四輪 T34–T39（2026-07-17 定案並經互動示意頁確認）與其後陸續追加的 T40–T45 亦已完成；
-**目前待實作的是 T46–T48**（行程景點下拉加入「出發地國家」、景點庫新增表單版面調整、
-景點列表手機卡片式檢視；均為 2026-09-09 與擁有者討論定案）。
+**現行第五輪 T46–T48**（2026-09-09 與擁有者討論定案）：T46 ✅ 已完成，T47／T48 待實作。
 各任務規格以「較低階模型可直接接手」為基準撰寫，設計決定均已拍板、勿重新設計，關鍵新程式碼附參考實作。
 
 - **範疇決策**：
@@ -945,7 +972,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
     `div role="button"`＋`onKeyDown` Enter/Space；勾選框 `onClick e.stopPropagation()`；項目名
     劃線灰字比照桌面、`quantity !== 0` 才顯示、備註第二行截斷灰字；展開後三欄＋刪除；`addRow`／
     `update`／`remove`／T21 繼承邏輯全未動）。
-  - **T46 行程景點下拉加入「出發地國家」**（2026-09-09 定案，⬜ 待實作，規格見 ISSUE_LIST.md）：
+  - **T46 行程景點下拉加入「出發地國家」**（✅ 2026-09-09，實作摘要見 §7）：
     T16 把 `AttractionPicker` 的國家鎖死成 `trip.country`（目的地），導致出發地（國內）的景點
     ——桃園機場、機場捷運等——在行程頁完全選不到。拍板做法：`Trip` 加 `originCountry` 欄位
     （總覽頁多一欄下拉，讀取一律 `?? '台灣'`＝舊資料視為台灣、清成空字串＝不設出發地），

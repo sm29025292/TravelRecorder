@@ -58,6 +58,7 @@ export default function TripList() {
       name: name.trim(),
       country: source?.country ?? '',
       city: source?.city ?? '',
+      originCountry: source?.originCountry ?? '台灣',
       region: source?.region ?? '',
       startDate,
       endDate,

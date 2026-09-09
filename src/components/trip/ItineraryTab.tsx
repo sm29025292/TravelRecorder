@@ -146,6 +146,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           value={it.attractionId}
           onChange={(id) => update(it.id, { attractionId: id })}
           country={trip.country ?? ''}
+          originCountry={trip.originCountry ?? '台灣'}
           defaultCity={trip.city ?? ''}
           visitedIds={visitedIds}
         />
@@ -281,6 +282,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
               value={it.attractionId}
               onChange={(id) => update(it.id, { attractionId: id })}
               country={trip.country ?? ''}
+              originCountry={trip.originCountry ?? '台灣'}
               defaultCity={trip.city ?? ''}
               visitedIds={visitedIds}
               variant="stack"

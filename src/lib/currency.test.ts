@@ -8,6 +8,7 @@ function mkTrip(patch: Partial<Trip> & Pick<Trip, 'id'>): Trip {
     name: patch.name ?? '',
     country: patch.country ?? '',
     city: patch.city ?? '',
+    originCountry: patch.originCountry ?? '台灣',
     region: patch.region ?? '',
     startDate: '',
     endDate: '',

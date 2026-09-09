@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { buildLocationTree, groupByLocation } from './group'
+import {
+  buildLocationTree,
+  citiesForCountries,
+  groupByLocation,
+  pickerCountries,
+} from './group'
 import type { Attraction } from '../types'
 
 function a(over: Partial<Attraction>): Attraction {
@@ -133,5 +138,50 @@ describe('groupByLocation', () => {
     // 兩個 priority 3 先出，其中 名稱升冪；接著 priority 1、priority 0
     expect(names.slice(2)).toEqual(['乙', '丁'])
     expect(names.slice(0, 2).sort((a, b) => a.localeCompare(b, 'zh-Hant'))).toEqual(names.slice(0, 2))
+  })
+})
+
+describe('pickerCountries（T46）', () => {
+  it('目的地與出發地都有 → 順序為 [目的地, 出發地]', () => {
+    expect(pickerCountries('日本', '台灣')).toEqual(['日本', '台灣'])
+  })
+  it('出發地空 → 只回目的地', () => {
+    expect(pickerCountries('日本', '')).toEqual(['日本'])
+  })
+  it('兩者相同 → 去重成一個', () => {
+    expect(pickerCountries('台灣', '台灣')).toEqual(['台灣'])
+  })
+  it('兩者皆空 → 空陣列（不依國家過濾）', () => {
+    expect(pickerCountries('', '')).toEqual([])
+  })
+})
+
+describe('citiesForCountries（T46）', () => {
+  const items = [
+    a({ id: '1', country: '日本', city: '大阪' }),
+    a({ id: '2', country: '日本', city: '東京' }),
+    a({ id: '3', country: '日本', city: '大阪' }),
+    a({ id: '4', country: '台灣', city: '桃園' }),
+    a({ id: '5', country: '台灣', city: '' }),
+    a({ id: '6', country: '韓國', city: '首爾' }),
+  ]
+
+  it('依 countries 順序一國一組，組內去重＋zh-Hant 排序', () => {
+    const groups = citiesForCountries(items, ['日本', '台灣'])
+    expect(groups.map((g) => g.country)).toEqual(['日本', '台灣'])
+    expect(groups[0].cities).toEqual(['大阪', '東京'])
+    expect(groups[1].cities).toEqual(['桃園'])
+  })
+
+  it('countries 為空 → 單一組（country 空字串）含全庫都市', () => {
+    const groups = citiesForCountries(items, [])
+    expect(groups).toHaveLength(1)
+    expect(groups[0].country).toBe('')
+    expect(groups[0].cities).toEqual(['大阪', '東京', '首爾', '桃園'])
+  })
+
+  it('該國在景點庫無都市 → 該組 cities 為空陣列', () => {
+    const groups = citiesForCountries(items, ['日本', '泰國'])
+    expect(groups[1]).toEqual({ country: '泰國', cities: [] })
   })
 })
