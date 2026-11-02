@@ -19,6 +19,8 @@ export function parseMapsUrl(raw) {
     kind: 'invalid',
     name: '',
     addressHint: '',
+    countryHint: '',
+    nameMayIncludeAddress: false,
     lat: null,
     lng: null,
     coordSource: '',
@@ -53,13 +55,32 @@ export function parseMapsUrl(raw) {
   const place = u.pathname.match(/\/maps\/place\/([^/]+)/)
   if (place) {
     const seg = dec(place[1])
-    // 手機 App 版：「名稱 地址…, 城市, 國家」黏在一起 → 以第一段「數字開頭」或第一個逗號前的空白切開
-    const m = seg.match(/^(.*?)\s+(\d[\w\-]*\s.*|\d.*)$/)
-    if (m && /,/.test(seg)) {
+    // 手機 App 版：「名稱＋英文地址, 城市, 都道府縣 郵遞區號＋國家」黏在一起，名稱與地址之間可能沒有空格
+    //   例：「箱島神社86 Nijohamakubo, Itoshima, Fukuoka 819-1614日本」
+    //       「新宿諏訪神社 1 Chome-12-6 Takadanobaba, Shinjuku City, Tokyo 169-0075, Japan」
+    // 地址起點＝第一個「數字（可含 -）＋空白＋英文字」且後面還有逗號的位置；名稱需非空且不以數字結尾。
+    const m = seg.match(/^(.*?[^\s\d])\s*(\d[\d-]*\s+[A-Za-z].*,.*)$/)
+    if (m) {
       out.name = m[1].trim()
-      out.addressHint = m[2].trim()
+      let addr = m[2].trim()
+      // 結尾國家：黏在郵遞區號後的非 ASCII 國名（「…819-1614日本」）或最後一段英文（「…, Japan」）
+      const cjk = addr.match(/^(.*?\d)\s*([^\x00-\x7F]+)$/)
+      if (cjk) {
+        addr = cjk[1].trim()
+        out.countryHint = cjk[2].trim()
+      } else {
+        const parts = addr.split(',')
+        const last = parts[parts.length - 1].trim()
+        if (parts.length > 2 && /^[A-Za-z .]+$/.test(last)) {
+          out.countryHint = last
+          addr = parts.slice(0, -1).join(',').trim()
+        }
+      }
+      out.addressHint = addr
     } else {
       out.name = seg
+      // 含逗號卻切不出地址：名稱裡可能夾著地址，交給人工確認
+      if (/,/.test(seg)) out.nameMayIncludeAddress = true
     }
   }
   const q = u.searchParams.get('q') || u.searchParams.get('query') || ''

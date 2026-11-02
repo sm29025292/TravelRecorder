@@ -895,6 +895,10 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   （`!3d!4d` 地點座標優先）、手機 App 版的 `addressHint`、`rareChars`。**不用 Nominatim／反向地理編碼 API、不抓 Google
   未公開介面**：國家／都市／區域由座標判斷、地址由公開網頁查證，地址須與座標同一行政區，不一致就問使用者
   （起因：「𢲡抬𢲡撸神社」＝サムハラ神社，初版誤認為坐摩神社）。網路權限開放後實測短網址可展開。
+  **實測修正（2026-11-02）**：手機分享的短網址會展開成「手機 App 版長網址」（無座標，名稱＋Google 英文地址黏在一起且
+  可能無空格，例 `箱島神社86 Nijohamakubo, Itoshima, Fukuoka 819-1614日本`）；解析器改以「數字＋空白＋英文字且後有逗號」
+  切出 `addressHint`、另拆 `countryHint`，含數字的店名（`ルクール2号店`／`7-Eleven`）不誤切；SKILL.md 改為此情況以
+  `addressHint`（Google 自己的地址）當比對基準，不必強求座標。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 171 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(21，含 T49 類型欄／`parseAttractionType`／`planAttractionImport`) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(14，T4 `buildLocationTree` + T7 組內 priority 排序 + T46 `pickerCountries`／`citiesForCountries`) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
