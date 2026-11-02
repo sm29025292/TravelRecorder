@@ -68,6 +68,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 | `src/pages/TripDetail.tsx` | 單一旅程，分頁：總覽 / 花費 / 行程 / 分帳 / 行李 |
 | `src/components/trip/{OverviewTab,ExpensesTab,ItineraryTab,SettlementTab,PackingTab}.tsx` | 五個分頁內容 |
 | `src/pages/Attractions.tsx` | 景點庫（T4 樹狀階層：國家→都市→區域可摺疊，節點「編輯」以 modal 批次改子樹位置；表格移除國家/都市/區域欄，改以「搬移」按鈕移動單列；級聯篩選＋類型 CRUD、「匯入 CSV」；T43 新增景點完整表單＋T47 版面、T48 景點列 `sm` 以下改手機卡片） |
+| `.claude/skills/attraction-csv/` | T50 Claude Skill：Google 地圖網址 → T49 標準格式景點 CSV（`SKILL.md`＋`scripts/parse-maps-url.mjs` 離線解析網址＋`scripts/to-csv.mjs` 驗證並輸出 CSV）；輸出到已 gitignore 的 `exports/` |
 | `.github/workflows/deploy.yml` | GitHub Pages 自動部署 |
 
 ## 5. 資料模型（詳見 `src/types.ts`）
@@ -880,6 +881,15 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   無變更時按鈕 disabled），完成訊息改「新增 N 筆、補充 M 筆，略過 K 筆」。無 schema／備份變動。
   ＋9 條測試（`parseAttractionType` 2、類型欄 4、`planAttractionImport` 3）→ 全 171 綠、build 通過；
   Playwright 實測 1400／375px 預覽無橫向溢出、既有「大阪城」只補地址／網址／類型／優先度且原備註保留。
+- ✅ **T50 Claude Skill：Google 地圖網址 → 景點 CSV**（2026-11-02）：擁有者拍板放 repo 內
+  `.claude/skills/attraction-csv/`。`SKILL.md` 定義欄位規則（台灣常用中文國名／城市名、區域無把握留空、
+  類型四選一、名稱／地址取用原則、網址保留原始連結）與流程（離線解析 → 展開短網址（curl／WebFetch，
+  失敗就請使用者貼完整網址）→ 查詢補欄位 → JSON → 腳本轉 CSV → 表格回報＋待確認清單），查不到不編造、
+  留空並在備註寫「待確認」。`scripts/parse-maps-url.mjs` 離線解析 `/maps/place/<名稱>`、`@lat,lng`、
+  `!3d!4d`、`q`／`query`、place id；`scripts/to-csv.mjs` 負責 RFC4180 跳脫、UTF-8 BOM、類型英文轉中文、
+  網址包成 `[Google 地圖](網址)` 並驗證必填／類型／優先度。輸出放 `exports/`（已加入 `.gitignore`）。
+  實測 `to-csv.mjs` 產出的 CSV 經 `parseAttractionsCSV` 讀回欄位完全一致；沙箱連不到 Google，
+  短網址展開需在擁有者本機驗證。App 程式碼未動、測試數不變（171）。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 171 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(21，含 T49 類型欄／`parseAttractionType`／`planAttractionImport`) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(14，T4 `buildLocationTree` + T7 組內 priority 排序 + T46 `pickerCountries`／`citiesForCountries`) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
@@ -903,7 +913,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 專案**聚焦「景點庫＋行程」兩大核心**。具體任務拆解在 **`ISSUE_LIST.md`**——後續 session 接手開發時，
 **先讀本檔、再挑 ISSUE_LIST.md 的任務執行**。第一～三輪 T1–T33 已全數完成（規格歸檔，見 §7）；
 第四輪 T34–T39（2026-07-17 定案並經互動示意頁確認）與其後陸續追加的 T40–T45 亦已完成；
-**現行第五輪 T46–T48**（2026-09-09 與擁有者討論定案）：**T46／T47／T48 皆已完成**；其後追加 **T49**（2026-11-02，景點 CSV 匯入支援類型欄＋預覽＋補空白欄位，✅）與待排程的 **T50**（Google 地圖網址 → 景點 CSV 的 Claude Skill，放置位置待擁有者決定）。
+**現行第五輪 T46–T48**（2026-09-09 與擁有者討論定案）：**T46／T47／T48 皆已完成**；其後追加 **T49**（2026-11-02，景點 CSV 匯入支援類型欄＋預覽＋補空白欄位，✅）與 **T50**（Google 地圖網址 → 景點 CSV 的 Claude Skill，放 `.claude/skills/attraction-csv/`，✅）；兩者一起驗證完才合併回 `main`。
 各任務規格以「較低階模型可直接接手」為基準撰寫，設計決定均已拍板、勿重新設計，關鍵新程式碼附參考實作。
 
 - **範疇決策**：
@@ -1093,4 +1103,5 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 
 - `.claude/settings.json`：專案層級 Claude Code 設定（**已進版控**，因遠端容器每次重新 clone，需 commit 才會在未來 session 持續生效）。
 - `.claude/hooks/remind-update-claude-md.sh`：Stop hook 腳本，落實第 10 節「做完修改就更新 CLAUDE.md」的習慣。
+- `.claude/skills/attraction-csv/`：T50 景點整理 Skill（貼 Google 地圖網址 → 景點 CSV，輸出到 `exports/`）。
 - 要檢視／停用此 hook：在 Claude Code 內開 `/hooks`。

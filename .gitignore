@@ -6,3 +6,6 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 dev-dist
+
+# T50 景點 Skill 輸出（個人資料，勿提交）
+exports/

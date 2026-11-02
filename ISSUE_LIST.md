@@ -63,7 +63,7 @@
 | T32 | 花費頁手機卡片式檢視 | ✅ 2026-07-15 |
 | T33 | 健檢擴充：成員孤兒參照 | ✅ 2026-07-15 |
 
-### 進行中（T34–T49，表列順序＝建議施工順序）
+### 進行中（T34–T50，表列順序＝建議施工順序）
 
 | # | 任務 | 優先 | 難度 | 依賴 | 狀態 |
 |---|------|------|------|------|------|
@@ -83,6 +83,7 @@
 | T47 | 景點庫新增表單：按鈕移到最下方獨立一列＋手機兩欄順序重排 | P2 | ★ | 無 | ✅ 2026-09-09 |
 | T48 | 景點列表手機卡片式檢視（修「類型」欄手機被壓扁） | P1 | ★★★ | 無（建議 T47 後，同檔） | ✅ 2026-09-09 |
 | T49 | 景點 CSV 匯入：支援「類型」欄＋匯入前預覽＋已存在補空白欄位（Skill 標準格式） | P1 | ★★ | 無 | ✅ 2026-11-02 |
+| T50 | Claude Skill：Google 地圖網址 → 景點 CSV（`.claude/skills/attraction-csv/`） | P1 | ★★ | T49 | ✅ 2026-11-02 |
 
 ## 共通守則（每個任務都適用）
 
@@ -1344,7 +1345,7 @@ export function citiesForCountries(
    無可新增或補充時按鈕 disabled。
 3. **重複景點＝補空白欄位**：以 `國家＋都市＋區域＋名稱` 比對；已存在者只把「本機空白、匯入有值」的
    `address／url／notes／type／priority`（priority 0 視為空白）補上，**不覆蓋既有內容**。
-4. Skill（T50）放置位置擁有者稍後決定，未排程。
+4. Skill 見 T50。
 
 **實作重點**（`src/lib/importAttractions.ts`）：
 - `detectHeader` 多認「類型」欄；新增純函式 `parseAttractionType`。
@@ -1362,6 +1363,31 @@ export function citiesForCountries(
 
 ---
 
+## T50 Claude Skill：Google 地圖網址 → 景點 CSV（P1・★★・依賴：T49）✅ 2026-11-02
+
+**目標**：使用者貼 Google 地圖網址（或地點名稱）給 Claude，產出 T49 標準格式 CSV，直接用景點庫「匯入 CSV」匯入。
+
+**已拍板（2026-11-02）**：Skill 放 **repo 內** `.claude/skills/attraction-csv/`（跟著版控、雲端 session 可用）；
+T49＋T50 一起驗證完才合併回 `main`。
+
+**內容**：
+- `SKILL.md`：欄位規則（台灣常用中文國名／城市名、區域無把握留空、類型四選一判斷、名稱與地址取用原則、
+  網址保留原始連結）、步驟（離線解析 → 展開短網址 → 查詢補欄位 → JSON → 腳本轉 CSV → 表格回報＋待確認清單）、
+  **查不到不編造**、留空並在備註寫「待確認：…」。
+- `scripts/parse-maps-url.mjs`：離線解析完整網址的 `/maps/place/<名稱>`、`@lat,lng`、`!3d!4d` 精確座標、
+  `q`／`query`、place id；短網址回 `short: true`。
+- `scripts/to-csv.mjs`：JSON → CSV（RFC4180 跳脫、UTF-8 BOM、CRLF、類型英文轉中文、網址包成 `[Google 地圖](網址)`），
+  驗證缺名稱／國家／都市、類型不合法、優先度非 0–3 整數時列出問題並 exit 1。
+- 輸出放 `exports/`（已加入 `.gitignore`，個人資料不進 public repo）。
+
+**限制**：開發沙箱連不到 Google（proxy 403），短網址展開／頁面讀取需在使用者本機或可連外的環境；
+連不到時 Skill 會請使用者貼完整網址或店名，不會猜。
+
+**驗收**：`to-csv.mjs` 產出的 CSV（含逗號、引號、BOM、英文類型）經 `parseAttractionsCSV` 讀回欄位完全一致；
+驗證錯誤能正確擋下。
+
+---
+
 ## 觀察中／不做
 
 - **先擱置（2026-09-09 討論，需求已提出但暫不排程）**：**行程列手動調整順序**——
@@ -1374,8 +1400,6 @@ export function citiesForCountries(
   切到手動才出現 ↑↓。代價是兩套模式都要測、使用者要先懂這個開關。
   (c) **拖曳排序**：手感最好，但要引入 dnd 套件或手寫 HTML5 drag，手機卡片式檢視的拖曳
   與捲動衝突不小，與本專案「純函式＋簡單 UI」的調性較不合。
-- **T50（待擁有者決定 Skill 放置位置後排程）**：Claude Skill「Google 地圖網址 → 景點 CSV」，輸出 T49 標準格式；
-  候選位置為 repo 內 `.claude/skills/`（跟著版控、雲端 session 可用）或擁有者個人 skills。
 - **觀察中（未排程）**：行程頁直接新增景點（picker 內開 modal）；當日景點串 Google Maps 路線；
   總覽頁旅程摘要卡；花費分類統計；T22「複製行程文字」輸出連結
   （T35 之後技術上可行——`linkDisplayText` 現成，擁有者尚未決定要不要加）。
