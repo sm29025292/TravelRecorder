@@ -900,7 +900,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   切出 `addressHint`、另拆 `countryHint`，含數字的店名（`ルクール2号店`／`7-Eleven`）不誤切；SKILL.md 改為此情況以
   `addressHint`（Google 自己的地址）當比對基準，不必強求座標。
   **欄位層級拍板（2026-11-02）**：「都市」改填**一級行政區**（日本都道府縣去字尾：福岡、大阪、東京；他國同理），
-  「區域」**有商圈填商圈、沒有就填二級行政區**（市町村／東京特別區，「市」去字尾：太宰府、糸島）。
+  「區域」**有商圈填商圈、沒有就填二級行政區**（市町村／東京特別區，「市」去字尾：太宰府、糸島；政令指定都市改填市內的區：大阪｜西區）。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 171 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(21，含 T49 類型欄／`parseAttractionType`／`planAttractionImport`) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(14，T4 `buildLocationTree` + T7 組內 priority 排序 + T46 `pickerCountries`／`citiesForCountries`) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
