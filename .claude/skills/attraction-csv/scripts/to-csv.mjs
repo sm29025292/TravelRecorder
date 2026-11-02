@@ -3,7 +3,7 @@
 // 用法：node to-csv.mjs <input.json> <output.csv>
 // JSON 每筆欄位：country, city, district, type, name, address, url, urlLabel?, notes, priority
 //   type：景點／美食／住宿／交通（或 attraction/food/lodging/transport，輸出統一為中文）
-//   url：原始 Google 地圖網址；輸出成 [urlLabel](url)，urlLabel 預設「Google 地圖」
+//   url：原始 Google 地圖網址；輸出成 [urlLabel](url)，urlLabel 預設「Google Map」
 //   priority：0–3（0＝未設）
 // 輸出 UTF-8 含 BOM（Excel 開啟中文不亂碼；App 匯入會自動去除 BOM）。驗證失敗時列出問題並 exit 1。
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -37,7 +37,7 @@ export function toCsv(items) {
     const p = it.priority === undefined || it.priority === '' ? 0 : Number(it.priority)
     if (!Number.isInteger(p) || p < 0 || p > 3) errors.push(`${tag}：優先度需為 0–3 整數`)
     const url = String(it.url ?? '').trim()
-    const label = String(it.urlLabel ?? 'Google 地圖').trim()
+    const label = String(it.urlLabel ?? 'Google Map').trim()
     const link = !url ? '' : /^\[.*\]\(.*\)$/.test(url) || !label ? url : `[${label}](${url})`
     lines.push(
       [it.country, it.city, it.district, type ?? '', it.name, it.address, link, it.notes, p || '']
