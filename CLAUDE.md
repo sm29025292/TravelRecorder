@@ -68,7 +68,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 | `src/pages/TripDetail.tsx` | 單一旅程，分頁：總覽 / 花費 / 行程 / 分帳 / 行李 |
 | `src/components/trip/{OverviewTab,ExpensesTab,ItineraryTab,SettlementTab,PackingTab}.tsx` | 五個分頁內容 |
 | `src/pages/Attractions.tsx` | 景點庫（T4 樹狀階層：國家→都市→區域可摺疊，節點「編輯」以 modal 批次改子樹位置；表格移除國家/都市/區域欄，改以「搬移」按鈕移動單列；級聯篩選＋類型 CRUD、「匯入 CSV」；T43 新增景點完整表單＋T47 版面、T48 景點列 `sm` 以下改手機卡片） |
-| `.claude/skills/attraction-csv/` | T50 Claude Skill：Google 地圖網址 → T49 標準格式景點 CSV（`SKILL.md`＋`scripts/parse-maps-url.mjs` 離線解析網址＋`scripts/to-csv.mjs` 驗證並輸出 CSV）；輸出到已 gitignore 的 `exports/` |
+| `.claude/skills/attraction-csv/` | T50 Claude Skill：Google 地圖網址 → T49 標準格式景點 CSV（`SKILL.md`＋`scripts/expand-url.sh` 短網址展開成長網址＋`scripts/parse-maps-url.mjs` 離線解析名稱／座標＋`scripts/to-csv.mjs` 驗證並輸出 CSV）；輸出到已 gitignore 的 `exports/` |
 | `.github/workflows/deploy.yml` | GitHub Pages 自動部署 |
 
 ## 5. 資料模型（詳見 `src/types.ts`）
@@ -890,6 +890,11 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   網址包成 `[Google 地圖](網址)` 並驗證必填／類型／優先度。輸出放 `exports/`（已加入 `.gitignore`）。
   實測 `to-csv.mjs` 產出的 CSV 經 `parseAttractionsCSV` 讀回欄位完全一致；沙箱連不到 Google，
   短網址展開需在擁有者本機驗證。App 程式碼未動、測試數不變（171）。
+  **改版（2026-11-02）**：依擁有者設計文件改為「先展開成含座標的長網址再解析」——新增 `scripts/expand-url.sh`
+  （curl 只追轉址）；`parse-maps-url.mjs` 輸出 `kind`（short／long-coords／long-no-coords／invalid）、`coordSource`
+  （`!3d!4d` 地點座標優先）、手機 App 版的 `addressHint`、`rareChars`。**不用 Nominatim／反向地理編碼 API、不抓 Google
+  未公開介面**：國家／都市／區域由座標判斷、地址由公開網頁查證，地址須與座標同一行政區，不一致就問使用者
+  （起因：「𢲡抬𢲡撸神社」＝サムハラ神社，初版誤認為坐摩神社）。網路權限開放後實測短網址可展開。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
 - ✅ **單元測試 171 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(21，含 T49 類型欄／`parseAttractionType`／`planAttractionImport`) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(14，T4 `buildLocationTree` + T7 組內 priority 排序 + T46 `pickerCountries`／`citiesForCountries`) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 

@@ -1386,6 +1386,14 @@ T49＋T50 一起驗證完才合併回 `main`。
 **驗收**：`to-csv.mjs` 產出的 CSV（含逗號、引號、BOM、英文類型）經 `parseAttractionsCSV` 讀回欄位完全一致；
 驗證錯誤能正確擋下。
 
+**改版（2026-11-02，依擁有者 2026-10-06「貼 Google 地圖連結自動預填」設計文件）**：流程改為**先取得含座標的長網址**——
+新增 `scripts/expand-url.sh`（curl 只追轉址、不讀頁面，把短網址展開成長網址；失敗則請使用者在瀏覽器等地圖載入完再複製網址列）；
+`parse-maps-url.mjs` 改輸出 `kind`（`short`／`long-coords`／`long-no-coords`／`invalid`，對應設計文件三種情況）、
+`coordSource`（`place`＝`!3d!4d` 地點座標、`viewport`＝`@` 地圖中心）、`addressHint`（手機 App 版名稱後黏的英文地址）、
+`entityId`、`rareChars`（名稱含 Unicode 擴充區罕見字）。**不用 Nominatim 或任何反向地理編碼 API、不抓 Google 未公開介面**：
+國家／都市／區域由座標判斷，地址由公開網頁查證，且**查到的地址必須與座標同一行政區**，不一致就請使用者確認、不得改成名稱相近的地點
+（起因：サムハラ神社的 Google 名稱為罕見字「𢲡抬𢲡撸神社」，初版曾誤認成坐摩神社）。
+
 ---
 
 ## 觀察中／不做
