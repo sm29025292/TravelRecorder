@@ -887,7 +887,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   失敗就請使用者貼完整網址）→ 查詢補欄位 → JSON → 腳本轉 CSV → 表格回報＋待確認清單），查不到不編造、
   留空並在備註寫「待確認」。`scripts/parse-maps-url.mjs` 離線解析 `/maps/place/<名稱>`、`@lat,lng`、
   `!3d!4d`、`q`／`query`、place id；`scripts/to-csv.mjs` 負責 RFC4180 跳脫、UTF-8 BOM、類型英文轉中文、
-  網址包成 `[Google 地圖](網址)` 並驗證必填／類型／優先度。輸出放 `exports/`（已加入 `.gitignore`）。
+  網址包成 `[Google Map](網址)` 並驗證必填／類型／優先度。輸出放 `exports/`（已加入 `.gitignore`）。
   實測 `to-csv.mjs` 產出的 CSV 經 `parseAttractionsCSV` 讀回欄位完全一致；沙箱連不到 Google，
   短網址展開需在擁有者本機驗證。App 程式碼未動、測試數不變（171）。
   **改版（2026-11-02）**：依擁有者設計文件改為「先展開成含座標的長網址再解析」——新增 `scripts/expand-url.sh`

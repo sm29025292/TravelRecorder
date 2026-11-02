@@ -1376,7 +1376,7 @@ T49＋T50 一起驗證完才合併回 `main`。
   **查不到不編造**、留空並在備註寫「待確認：…」。
 - `scripts/parse-maps-url.mjs`：離線解析完整網址的 `/maps/place/<名稱>`、`@lat,lng`、`!3d!4d` 精確座標、
   `q`／`query`、place id；短網址回 `short: true`。
-- `scripts/to-csv.mjs`：JSON → CSV（RFC4180 跳脫、UTF-8 BOM、CRLF、類型英文轉中文、網址包成 `[Google 地圖](網址)`），
+- `scripts/to-csv.mjs`：JSON → CSV（RFC4180 跳脫、UTF-8 BOM、CRLF、類型英文轉中文、網址包成 `[Google Map](網址)`），
   驗證缺名稱／國家／都市、類型不合法、優先度非 0–3 整數時列出問題並 exit 1。
 - 輸出放 `exports/`（已加入 `.gitignore`，個人資料不進 public repo）。
 
