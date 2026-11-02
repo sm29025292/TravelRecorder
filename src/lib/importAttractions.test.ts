@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { parseCSV } from './csv'
-import { rowsToAttractions } from './importAttractions'
+import {
+  parseAttractionType,
+  planAttractionImport,
+  rowsToAttractions,
+  type NewAttraction,
+} from './importAttractions'
+import type { Attraction } from '../types'
 
 // 合成樣本：涵蓋向下填滿、備註在不同欄、第二份重複表頭、餐館表（引號內逗號的價位）、雜項。
 const csv = [
@@ -118,5 +124,106 @@ describe('rowsToAttractions with 國家 column', () => {
   it('國家切換時 city/district 全部重置並改用新國家', () => {
     expect(byName['景福宮']).toMatchObject({ country: '韓國', city: '首爾', district: '' })
     expect(byName['南山塔']).toMatchObject({ country: '韓國', city: '首爾', district: '' })
+  })
+})
+
+// T49：「類型」欄＋標準格式（Skill 輸出用）。
+describe('parseAttractionType', () => {
+  it('中文標籤與英文值皆可辨識（英文不分大小寫、前後空白忽略）', () => {
+    expect(parseAttractionType('景點')).toBe('attraction')
+    expect(parseAttractionType(' 美食 ')).toBe('food')
+    expect(parseAttractionType('住宿')).toBe('lodging')
+    expect(parseAttractionType('Transport')).toBe('transport')
+  })
+  it('空字串或無法辨識回 null', () => {
+    expect(parseAttractionType('')).toBeNull()
+    expect(parseAttractionType('購物')).toBeNull()
+  })
+})
+
+describe('rowsToAttractions with 類型 column（T49 標準格式）', () => {
+  const csv = [
+    '國家,地點,區域,類型,景點,地址,網址,備註,優先度',
+    '日本,大阪,心齋橋,美食,蟹道樂,大阪府道頓堀1-6-18,[Google 地圖](https://maps.app.goo.gl/x),,2',
+    ',,,住宿,難波飯店,,,,',
+    ',,,購物,黑門市場,,,早上去,1',
+    '日本,大阪,,景點,大阪城,,,,3', // 類型值「景點」不可被誤判為表頭
+    '地點,餐館,類型',
+    '京都,一蘭,',
+  ].join('\n')
+  const { items } = rowsToAttractions(parseCSV(csv))
+  const byName = Object.fromEntries(items.map((i) => [i.name, i]))
+
+  it('類型欄落入 type，其餘欄位正確', () => {
+    expect(byName['蟹道樂']).toMatchObject({
+      country: '日本',
+      city: '大阪',
+      district: '心齋橋',
+      type: 'food',
+      address: '大阪府道頓堀1-6-18',
+      url: '[Google 地圖](https://maps.app.goo.gl/x)',
+      priority: 2,
+      notes: '',
+    })
+    expect(byName['難波飯店']).toMatchObject({ type: 'lodging', city: '大阪' })
+  })
+  it('類型值為「景點」的資料列不會被當成表頭', () => {
+    expect(byName['大阪城']).toMatchObject({ type: 'attraction', city: '大阪', district: '', priority: 3 })
+  })
+  it('無法辨識的類型退回表頭推斷（景點表＝未設），且類型欄不混入備註', () => {
+    expect(byName['黑門市場']).toMatchObject({ type: '', notes: '早上去' })
+  })
+  it('類型欄空白時餐館表仍標 food', () => {
+    expect(byName['一蘭']).toMatchObject({ type: 'food' })
+  })
+})
+
+describe('planAttractionImport（T49：已存在補空白欄位）', () => {
+  const base: NewAttraction = {
+    country: '日本',
+    city: '大阪',
+    district: '',
+    name: '大阪城',
+    address: '',
+    url: '',
+    notes: '',
+    priority: 0,
+    type: '',
+  }
+  const existing: Attraction[] = [
+    { ...base, id: 'a1', address: '既有地址', priority: 3 },
+    { ...base, id: 'a2', name: '通天閣', address: '', url: 'https://old', type: 'attraction' },
+  ]
+
+  it('不存在 → 新增；已存在 → 只補空白欄位、不覆蓋已有值', () => {
+    const plan = planAttractionImport(
+      [
+        { ...base, address: '新地址', url: 'https://new', priority: 1, type: 'attraction' },
+        { ...base, name: '通天閣', address: '浪速區', url: 'https://new', type: 'food' },
+        { ...base, name: '環球影城' },
+      ],
+      existing,
+    )
+    expect(plan.toAdd.map((a) => a.name)).toEqual(['環球影城'])
+    expect(plan.toUpdate).toEqual([
+      { id: 'a1', name: '大阪城', patch: { url: 'https://new', type: 'attraction' } },
+      { id: 'a2', name: '通天閣', patch: { address: '浪速區' } },
+    ])
+    expect(plan.unchanged).toBe(0)
+  })
+
+  it('已存在但無可補欄位 → unchanged；同批次重複鍵只第一筆生效', () => {
+    const plan = planAttractionImport(
+      [{ ...base, address: '別的地址' }, { ...base, name: 'X' }, { ...base, name: 'X' }],
+      existing,
+    )
+    expect(plan.toAdd).toHaveLength(1)
+    expect(plan.toUpdate).toHaveLength(0)
+    expect(plan.unchanged).toBe(2)
+  })
+
+  it('鍵含國家／都市／區域：區域不同視為不同景點', () => {
+    const plan = planAttractionImport([{ ...base, district: '中央區' }], existing)
+    expect(plan.toAdd).toHaveLength(1)
   })
 })

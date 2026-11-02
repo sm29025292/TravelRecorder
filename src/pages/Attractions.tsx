@@ -27,7 +27,13 @@ import {
   type CountryNode,
   type DistrictNode,
 } from '../lib/group'
-import { importAttractionsFromCSV } from '../lib/importAttractions'
+import {
+  applyAttractionImport,
+  parseAttractionsCSV,
+  planAttractionImport,
+  type FillableField,
+  type ImportPlan,
+} from '../lib/importAttractions'
 import { applyMerge, findDuplicateGroups } from '../lib/dedupeAttractions'
 import { findOrphanItinerary } from '../lib/orphanItinerary'
 import { findOrphanMemberRefs, type OrphanMemberRef } from '../lib/orphanMembers'
@@ -171,10 +177,32 @@ export default function Attractions() {
 
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // T49：匯入前預覽（解析＋比對後先顯示，按「確定匯入」才寫入）
+  const [importPreview, setImportPreview] = useState<{
+    fileName: string
+    items: ReturnType<typeof parseAttractionsCSV>['items']
+    skipped: number
+    plan: ImportPlan
+  } | null>(null)
+
   async function handleCSV(file: File) {
     try {
-      const { added, duplicates, skipped } = await importAttractionsFromCSV(await file.text())
-      setMsg(`匯入完成：新增 ${added} 筆，略過 ${duplicates + skipped} 筆（重複或非景點）`)
+      const { items, skipped } = parseAttractionsCSV(await file.text())
+      const plan = planAttractionImport(items, await db.attractions.toArray())
+      setImportPreview({ fileName: file.name, items, skipped, plan })
+    } catch (e) {
+      setMsg('匯入失敗：' + (e as Error).message)
+    }
+  }
+
+  async function confirmImport() {
+    if (!importPreview) return
+    try {
+      const { added, updated, unchanged } = await applyAttractionImport(importPreview.items)
+      setImportPreview(null)
+      setMsg(
+        `匯入完成：新增 ${added} 筆、補充 ${updated} 筆，略過 ${unchanged + importPreview.skipped} 筆（已存在無變更、重複或非景點）`,
+      )
       setTimeout(() => setMsg(''), 6000)
     } catch (e) {
       setMsg('匯入失敗：' + (e as Error).message)
@@ -900,6 +928,15 @@ export default function Attractions() {
         )
       })}
 
+      {/* T49 匯入預覽 modal */}
+      {importPreview && (
+        <ImportPreviewPanel
+          preview={importPreview}
+          onCancel={() => setImportPreview(null)}
+          onConfirm={confirmImport}
+        />
+      )}
+
       {/* 整理重複景點 modal */}
       {dedupeOpen && (
         <DedupePanel
@@ -1036,6 +1073,142 @@ export default function Attractions() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+const FIELD_LABELS: Record<FillableField, string> = {
+  address: '地址',
+  url: '網址',
+  notes: '備註',
+  type: '類型',
+  priority: '優先度',
+}
+
+const typeLabel = (t: Attraction['type']) => ATTRACTION_TYPES.find((o) => o.value === t)?.label ?? ''
+
+/** T49：匯入 CSV 前的預覽面板（新增／補充／略過三區塊）。 */
+function ImportPreviewPanel({
+  preview,
+  onCancel,
+  onConfirm,
+}: {
+  preview: { fileName: string; skipped: number; plan: ImportPlan }
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const { plan, skipped, fileName } = preview
+  const ignored = plan.unchanged + skipped
+  const nothing = plan.toAdd.length === 0 && plan.toUpdate.length === 0
+  const [busy, setBusy] = useState(false)
+  const loc = (a: { country: string; city: string; district: string }) =>
+    [a.country, a.city, a.district].filter(Boolean).join(' · ') || '未分類'
+  const show = (f: FillableField, v: string | number) =>
+    f === 'type'
+      ? typeLabel(v as Attraction['type'])
+      : f === 'url'
+        ? linkDisplayText(String(v))
+        : f === 'priority'
+          ? '★'.repeat(Number(v))
+          : String(v)
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-lg bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b p-4">
+          <h2 className="text-base font-semibold">匯入預覽</h2>
+          <p className="mt-0.5 truncate text-xs text-gray-500">{fileName}</p>
+          <div className="mt-2 flex flex-wrap gap-2 text-sm">
+            <span className="rounded bg-green-50 px-2 py-0.5 text-green-700">
+              新增 {plan.toAdd.length} 筆
+            </span>
+            <span className="rounded bg-sky-50 px-2 py-0.5 text-sky-700">
+              補充 {plan.toUpdate.length} 筆
+            </span>
+            <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-600">略過 {ignored} 筆</span>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            以「國家＋都市＋區域＋名稱」比對；已存在的景點只補上目前空白的欄位，不覆蓋既有內容。
+          </p>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto p-4 text-sm">
+          {nothing && (
+            <p className="rounded border border-dashed p-6 text-center text-gray-500">
+              沒有可新增或補充的景點。
+            </p>
+          )}
+          {plan.toAdd.length > 0 && (
+            <section>
+              <h3 className="mb-1 font-medium text-green-700">新增</h3>
+              <ul className="divide-y rounded border">
+                {plan.toAdd.map((a, i) => (
+                  <li key={i} className="px-3 py-1.5">
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="font-medium">{a.name}</span>
+                      {a.type && <span className="text-xs text-gray-500">{typeLabel(a.type)}</span>}
+                      {a.priority > 0 && (
+                        <span className="text-xs text-amber-500">{'★'.repeat(Math.min(3, a.priority))}</span>
+                      )}
+                      <span className="ml-auto text-xs text-gray-500">{loc(a)}</span>
+                    </div>
+                    {(a.address || a.url) && (
+                      <div className="truncate text-xs text-gray-400">
+                        {[a.address, linkDisplayText(a.url)].filter(Boolean).join('・')}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {plan.toUpdate.length > 0 && (
+            <section>
+              <h3 className="mb-1 font-medium text-sky-700">補充空白欄位</h3>
+              <ul className="divide-y rounded border">
+                {plan.toUpdate.map((u) => (
+                  <li key={u.id} className="px-3 py-1.5">
+                    <div className="font-medium">{u.name}</div>
+                    {(Object.keys(u.patch) as FillableField[]).map((f) => (
+                      <div key={f} className="truncate text-xs text-gray-500">
+                        ＋{FIELD_LABELS[f]}：{show(f, u.patch[f] as string | number)}
+                      </div>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t p-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded border px-3 py-1.5 text-sm hover:bg-gray-50"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            disabled={nothing || busy}
+            onClick={async () => {
+              setBusy(true)
+              await onConfirm()
+              setBusy(false)
+            }}
+            className="rounded bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700 disabled:bg-gray-300"
+          >
+            確定匯入
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

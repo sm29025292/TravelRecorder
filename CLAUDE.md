@@ -48,7 +48,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 | `src/lib/sync.ts` | T10 Gist 同步後端：`SyncBackend` 介面、`GistBackend`（read/write，處理 `truncated`＋`raw_url`）、`createGist`（`public:false`） |
 | `src/components/SyncDialog.tsx` | 「同步」對話框（token/gistId/passphrase＋上傳/下載按鈕；localStorage `tr.sync.*`） |
 | `src/lib/csv.ts` | RFC4180 `parseCSV`（處理引號內逗號/換行、CRLF、BOM） |
-| `src/lib/importAttractions.ts` | 景點 CSV 匯入：`rowsToAttractions`（純）/ `mergeAttractions` / `importAttractionsFromCSV` |
+| `src/lib/importAttractions.ts` | 景點 CSV 匯入：`rowsToAttractions`／`parseAttractionType`／`planAttractionImport`（純，T49 新增 vs 補空白欄位）/ `parseAttractionsCSV` / `applyAttractionImport` |
 | `src/lib/dedupeAttractions.ts` | 重複景點合併：`normalizeName` / `findDuplicateGroups`（純）/ `mergeAttractionFields`（純）/ `applyMerge`（單 transaction 更新 survivor＋重指行程參照＋刪除 losers） |
 | `src/lib/orphanItinerary.ts` | 孤兒行程列偵測：`findOrphanItinerary`（純，`attractionId` 非空且景點庫查無者） |
 | `src/lib/visited.ts` | T15 已去過推導：`visitedAttractionIds`（純，收集全庫 itinerary 非空 `attractionId` 為 Set） |
@@ -88,9 +88,9 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 - **即時更新**：頁面用 `useLiveQuery` 讀 Dexie，資料一改畫面與計算立即重算。
 - **輸入元件聚焦緩衝**（`cells.tsx`）：因為寫入 IndexedDB 後會經 `useLiveQuery` 回流，
   輸入框在「聚焦時不被外部值覆寫」，避免游標跳動/吃字。**新增表單欄位請沿用這些元件**。
-- **景點是全域參考資料**，以「國家／都市／區域」（`country`/`city`/`district`）三層分組、可標 `type`（景點/美食）；行程以 `attractionId` 參照。CSV 匯入時「地點」欄落在 `city`、餐館表標 `type:'food'`；表頭若額外含「區域」欄（放在「地點」與「景點」之間）則落入 `district`（區域跟隨「地點」向下填滿、都市切換時自動重置；含區域欄時餐館 city 不再加「 美食」後綴，只以 `type:'food'` 區分）；表頭若再額外含「國家」欄（放在「地點」之前）則落入 `country`（同樣向下填滿、切換時自動重置 city+district），沒有此欄則 `country` 留空待補。
+- **景點是全域參考資料**，以「國家／都市／區域」（`country`/`city`/`district`）三層分組、可標 `type`（景點/美食）；行程以 `attractionId` 參照。CSV 匯入時「地點」欄落在 `city`、餐館表標 `type:'food'`；表頭若額外含「區域」欄（放在「地點」與「景點」之間）則落入 `district`（區域跟隨「地點」向下填滿、都市切換時自動重置；含區域欄時餐館 city 不再加「 美食」後綴，只以 `type:'food'` 區分）；表頭若再額外含「國家」欄（放在「地點」之前）則落入 `country`（同樣向下填滿、切換時自動重置 city+district），沒有此欄則 `country` 留空待補。T49 起表頭可再含「類型」欄（景點／美食／住宿／交通或英文值），標準格式為 `國家,地點,區域,類型,景點,地址,網址,備註,優先度`；匯入前先預覽，已存在景點（國家＋都市＋區域＋名稱相同）只補空白欄位、不覆蓋。
 - id 一律 `newId()`；數字輸入值為 0 時顯示空白。
-- **資料每台裝置各自存**（IndexedDB 不跨裝置同步）。跨裝置 = JSON 匯出再匯入；CSV 匯入是**合併不覆蓋**。
+- **資料每台裝置各自存**（IndexedDB 不跨裝置同步）。跨裝置 = JSON 匯出再匯入；CSV 匯入是**合併不覆蓋**（T49 起已存在景點會補上空白欄位）。
 - **分帳**（`money.ts` 的 `settle`／`settleByCurrency`）：只彙整**花費**（T17 起行程不列入），每筆依 `payerId`／`participantIds` 算各人已付/應分攤/結餘，「誰付給誰」用**成對淨額**（T24：兩兩互欠對沖，每筆轉帳對應實際債務、可追溯；不用最少筆數貪婪法）；**各幣別獨立結算、不換匯、不跨幣別對沖**（T24：金額入該列幣別的桶，台幣「手續費(元)」另計入 TWD 桶）。未設付錢者或標「已結清」（T19）的列不列入。花費每列可選付錢者與分攤對象，預設全體均分。
 
 ## 7. 已完成（截至目前）
@@ -865,8 +865,23 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
   展開後「類型」下拉寬 276px **完整可見可操作**（原 bug 消失），改成「美食」後摘要標籤即時更新；
   展開狀態下仍無橫向溢出；被行程引用的景點按刪除仍跳 T5 的「此景點被 1 筆行程使用…」confirm、
   取消後不刪；「搬移」正常開啟「搬移景點」modal。
+- ✅ **T49 景點 CSV 匯入：「類型」欄＋匯入前預覽＋已存在補空白欄位**（2026-11-02）：為了讓擁有者日後用
+  Claude Skill 把 Google 地圖網址整理成 CSV 直接匯入。`src/lib/importAttractions.ts`：`detectHeader` 多認
+  「類型」欄，新增純函式 `parseAttractionType`（中文標籤或英文值、不分大小寫；空／無法辨識回 `null`
+  → 退回表頭推斷）；類型欄排除於備註收集之外。**修兩個標準格式才會踩到的問題**：①資料列類型值為「景點」
+  時會被誤判為表頭 → 表頭須再含 `國家／地點／區域／地址／網址／類型` 任一標籤；②區域向下填滿改為「該列有明寫
+  地點時區域取字面值（空白＝無區域）、地點空白才填滿」，否則同都市無區域的列會沿用上一列區域而比對不到既有景點
+  （舊 CSV 測試全部照過）。`mergeAttractions`／`importAttractionsFromCSV` 移除，改為 `parseAttractionsCSV`、
+  純函式 `planAttractionImport(items, existing)`（以國家＋都市＋區域＋名稱比對：不存在 → `toAdd`；
+  已存在 → 只把本機空白的 `address／url／notes／type／priority`（priority 0 視為空白）放進 patch，
+  無可補 → `unchanged`；同批次重複鍵只取第一筆）與 `applyAttractionImport`（單一 transaction 內以最新 DB
+  重新規劃後 `bulkAdd`＋逐筆 `update`）。`src/pages/Attractions.tsx`：`handleCSV` 改為解析＋規劃後開
+  `ImportPreviewPanel` modal（新增／補充／略過計數 chip＋「新增」「補充空白欄位」兩區明細，按「確定匯入」才寫入、
+  無變更時按鈕 disabled），完成訊息改「新增 N 筆、補充 M 筆，略過 K 筆」。無 schema／備份變動。
+  ＋9 條測試（`parseAttractionType` 2、類型欄 4、`planAttractionImport` 3）→ 全 171 綠、build 通過；
+  Playwright 實測 1400／375px 預覽無橫向溢出、既有「大阪城」只補地址／網址／類型／優先度且原備註保留。
 - ✅ **自動部署**：GitHub Actions → GitHub Pages。
-- ✅ **單元測試 155 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(12) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(7，T4 `buildLocationTree` + T7 組內 priority 排序) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
+- ✅ **單元測試 171 項**：`money`(23，含 `settle` 分帳＋T12 `itineraryForeignSubtotal`＋T24 成對淨額/`settleByCurrency`) + `csv`(5) + `importAttractions`(21，含 T49 類型欄／`parseAttractionType`／`planAttractionImport`) + `migrate`(5) + `currency`(5) + `itinerary`(48，T6 分組／週幾／當日小計 + T11 組內時間排序 + T13 range 補空日／`datesInRange` + T18 `hoursBetween` + T27 `normalizeTimeText` + T30 `shiftDateStr`) + `group`(14，T4 `buildLocationTree` + T7 組內 priority 排序 + T46 `pickerCountries`／`citiesForCountries`) + `dedupeAttractions`(11，T8 `normalizeName`/`findDuplicateGroups`/`mergeAttractionFields`) + `orphanItinerary`(5，T9 `findOrphanItinerary`) + `orphanMembers`(7，T33 `findOrphanMemberRefs`) + `visited`(3，T15 `visitedAttractionIds`) + `exportItinerary`(6，T22 `itineraryToText`) + `link`(13，T35 `parseLink`/`serializeLink`/`linkDisplayText`) + `crypto`(5，T10 roundtrip／錯誤密語／salt+iv 隨機／envelope 欄位／壞 JSON)，`npm run test` 全綠。
 
 ## 8. 部署與眉角（重要！）
 
@@ -888,7 +903,7 @@ node scripts/gen-icons.mjs   # 重新產生 PWA 圖示（已內附，通常不�
 專案**聚焦「景點庫＋行程」兩大核心**。具體任務拆解在 **`ISSUE_LIST.md`**——後續 session 接手開發時，
 **先讀本檔、再挑 ISSUE_LIST.md 的任務執行**。第一～三輪 T1–T33 已全數完成（規格歸檔，見 §7）；
 第四輪 T34–T39（2026-07-17 定案並經互動示意頁確認）與其後陸續追加的 T40–T45 亦已完成；
-**現行第五輪 T46–T48**（2026-09-09 與擁有者討論定案）：**T46／T47／T48 皆已完成**。
+**現行第五輪 T46–T48**（2026-09-09 與擁有者討論定案）：**T46／T47／T48 皆已完成**；其後追加 **T49**（2026-11-02，景點 CSV 匯入支援類型欄＋預覽＋補空白欄位，✅）與待排程的 **T50**（Google 地圖網址 → 景點 CSV 的 Claude Skill，放置位置待擁有者決定）。
 各任務規格以「較低階模型可直接接手」為基準撰寫，設計決定均已拍板、勿重新設計，關鍵新程式碼附參考實作。
 
 - **範疇決策**：

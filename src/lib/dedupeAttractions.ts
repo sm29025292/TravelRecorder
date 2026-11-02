@@ -77,7 +77,7 @@ export function mergeAttractionFields(survivor: Attraction, losers: Attraction[]
  * ① 以 mergeAttractionFields 更新 survivor
  * ② 把行程列的 attractionId 從 losers 改指向 survivor（沿用 T5 全表 filter）
  * ③ 刪除 losers。
- * 命名避開 importAttractions.ts 既有的 mergeAttractions。
+ * （命名沿用歷史：曾避開 importAttractions.ts 的 mergeAttractions，該函式已於 T49 移除。）
  */
 export async function applyMerge(survivorId: string, loserIds: string[]): Promise<void> {
   const { db } = await import('../db/db')
