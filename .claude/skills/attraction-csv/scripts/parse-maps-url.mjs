@@ -35,6 +35,12 @@ export function parseMapsUrl(raw) {
     return out
   }
   const host = u.hostname.toLowerCase()
+  // Google 限流時短網址會轉到 /sorry 頁，原本的長網址就放在 continue 參數裡 → 直接取出解析（不再對 Google 發請求）
+  if (/(^|\.)google\.[a-z.]+$/.test(host) && u.pathname.startsWith('/sorry')) {
+    const cont = u.searchParams.get('continue')
+    if (cont && cont !== raw) return { ...parseMapsUrl(cont), input: raw, fromSorryPage: true }
+    return out
+  }
   if (host === 'maps.app.goo.gl' || (host === 'goo.gl' && u.pathname.startsWith('/maps'))) {
     return { ...out, kind: 'short' }
   }
